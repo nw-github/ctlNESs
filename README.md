@@ -33,8 +33,8 @@ The controls are hardcoded to the following values (for both controllers):
 -   DPAD Left: A
 -   DPAD Down: S
 -   DPAD Right: D
--   B: U
--   A: I
+-   B: I
+-   A: O
 -   Start: Enter
 -   Select: Tab
 -   Reset: R
