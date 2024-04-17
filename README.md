@@ -2,12 +2,17 @@
 
 ctlNESs is a NES emulator written in [CTL](https://github.com/nw-github/ctl). It's primary purpose was to gauge the current state of the language from a usability standpoint with a medium sized project (and to cross "create an emulator" off my bucket list), rather than an attempt to make a featureful or accurate emulator.
 
+## Examples
+
+![Alt text](images/mario.png "the emulator open to Super Mario Bros.")
+![Alt text](images/zelda.png "the emulator open to The Legend of Zelda")
+
 ## Usage
 
 To compile the project, run the following command. You will need SDL2 installed.
 
 ```
-ctl b -qio -lSDL2 -lrt -lm . ctlness
+ctl b -qio -lSDL2 -lrt -lm ./ctlness ctlness
 ```
 
 Then, run the resulting `ctlness` binary with the path to the desired rom
@@ -19,7 +24,7 @@ ctlness "roms/Super Mario Bros.nes"
 Alternatively, you can do both in one command
 
 ```
-ctl r -qio -lSDL2 -lrt -lm . -- "roms/Super Mario Bros.nes"
+ctl r -qio -lSDL2 -lrt -lm ./ctlness -- "roms/Super Mario Bros.nes"
 ```
 
 The controls are hardcoded to the following values (for both controllers):

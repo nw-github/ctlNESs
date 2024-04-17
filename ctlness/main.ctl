@@ -94,6 +94,7 @@ fn print_channels([a, b, t, n, d]: *[bool; 5]) {
 }
 
 fn main(args: [str..]): c_int {
+    static NAME: str = "ctlNESs";
     static SCALE: i32 = 3;
     static KEYMAP: [Scancode: JoystickBtn] = [
         Scancode::W: JoystickBtn::Up,
@@ -136,7 +137,7 @@ fn main(args: [str..]): c_int {
         return 1;
     }
     defer audio.deinit();
-    guard Window::new("Nes", ppu::HPIXELS as! i32, ppu::VPIXELS as! i32, SCALE) is ?mut wnd else {
+    guard Window::new(NAME, ppu::HPIXELS as! i32, ppu::VPIXELS as! i32, SCALE) is ?mut wnd else {
         eprintln("Error occurred while initializing SDL: {sdl::get_last_error()}");
         return 1;
     }
@@ -227,7 +228,7 @@ fn main(args: [str..]): c_int {
                 fps += *v;
             }
             let fps = fps / fps_history[..].len() as! f64;
-            wnd.set_title("Nes ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
+            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
         }
 
         audio.write(nes.audio_buffer());
