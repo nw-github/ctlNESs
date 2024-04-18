@@ -35,9 +35,42 @@ pub struct SDL_KeyboardEvent {
     pub keysym: SDL_Keysym,
 }
 
+pub struct SDL_WindowEvent {
+    pub typ: u32,
+    pub timestamp: u32,
+    pub windowID: u32,
+    pub event: WindowEvent,
+    _pad: [u8; 3],
+    pub data1: i32,
+    pub data2: i32,
+}
+
+pub union WindowEvent: u8 {
+    None,
+    Shown,
+    Hidden,
+    Exposed,
+    Moved,
+    Resized,
+    SizeChanged,
+    Minimized,
+    Maximized,
+    Restored,
+    Enter,
+    Leave,
+    FocusGained,
+    FocusLost,
+    Close,
+    TakeFocus,
+    HitTest,
+    IccprofChanged,
+    DisplayChanged,
+}
+
 pub unsafe union SDL_Event {
     typ: u32,
     key: SDL_KeyboardEvent,
+    window: SDL_WindowEvent,
     _pad: [u8; 52],
 }
 
@@ -52,6 +85,7 @@ pub const SDL_INIT_VIDEO: u32 = 0x20;
 pub const SDL_INIT_AUDIO: u32 = 0x10;
 
 pub const SDL_QUIT: u32 = 0x100;
+pub const SDL_WINDOWEVENT: u32 = 0x200;
 pub const SDL_KEYDOWN: u32 = 0x300;
 pub const SDL_KEYUP: u32   = 0x301;
 

@@ -133,12 +133,12 @@ fn main(args: [str..]): c_int {
     };
     mut nes = Nes::new(Input::new(InputMode::Keyboard), cart, save);
     guard Audio::new() is ?mut audio else {
-        eprintln("Error occurred while initializing SDL: {sdl::get_last_error()}");
+        eprintln("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
         return 1;
     }
     defer audio.deinit();
     guard Window::new(NAME, ppu::HPIXELS as! i32, ppu::VPIXELS as! i32, SCALE) is ?mut wnd else {
-        eprintln("Error occurred while initializing SDL: {sdl::get_last_error()}");
+        eprintln("Error occurred while initializing SDL Window: {sdl::get_last_error()}");
         return 1;
     }
     defer wnd.deinit();
@@ -210,15 +210,15 @@ fn main(args: [str..]): c_int {
                         _ => {}
                     }
                 }
+                SdlEvent::Window({event}) => {
+                    if event is WindowEvent::Close {
+                        done = true;
+                        break;
+                    }
+                }
             }
         }
 
-        time += clock.restart().as_seconds();
-        if time < 1.0 / 60.0 {
-            continue;
-        }
-
-        time -= 1.0 / 60.0;
         while !nes.cycle() {}
 
         fps_history[fpsi++ % 20] = fps_clock.restart().as_seconds();

@@ -1,3 +1,5 @@
+pub use bindings::WindowEvent;
+
 use bindings::*;
 
 pub union Scancode: u32 {
@@ -84,6 +86,7 @@ pub union SdlEvent {
     Quit,
     KeyDown(KeyEvent),
     KeyUp(KeyEvent),
+    Window(SDL_WindowEvent),
 }
 
 pub struct Color {
@@ -187,6 +190,8 @@ pub struct Window {
                 SdlEvent::KeyDown(KeyEvent::from_raw(event.key))
             } else if event.typ == SDL_KEYUP {
                 SdlEvent::KeyUp(KeyEvent::from_raw(event.key))
+            } else if event.typ == SDL_WINDOWEVENT {
+                SdlEvent::Window(event.window)
             }
         }
     }
