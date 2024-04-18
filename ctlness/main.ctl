@@ -219,6 +219,12 @@ fn main(args: [str..]): c_int {
             }
         }
 
+        time += clock.restart().as_seconds();
+        if time < 1.0 / 60.0 {
+            continue;
+        }
+
+        time -= 1.0 / 60.0;
         while !nes.cycle() {}
 
         fps_history[fpsi++ % 20] = fps_clock.restart().as_seconds();
