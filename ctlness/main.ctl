@@ -127,6 +127,12 @@ fn main(args: [str..]): c_int {
         eprintln("invalid cartridge file");
         return 1;
     }
+    eprintln("mapper: {cart.mapper}");
+    eprintln("has battery: {cart.has_battery}");
+    eprintln("mirroring: {cart.mirroring as u8}");
+    eprintln("chr_rom: 0x{cart.chr_rom.len().to_str_radix(16)}");
+    eprintln("prg_rom: 0x{cart.prg_rom.len().to_str_radix(16)}");
+
     let save = if cart.has_battery and read_bytes(save_path) is ?save {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
@@ -162,6 +168,12 @@ fn main(args: [str..]): c_int {
                     done = true;
                     break;
                 }
+                SdlEvent::Window({event}) => {
+                    if event is WindowEvent::Close {
+                        done = true;
+                        break;
+                    }
+                }
                 SdlEvent::KeyDown(event) => {
                     if KEYMAP.get(&event.scancode) is ?btn {
                         nes.input().press(*btn, 0);
@@ -171,7 +183,19 @@ fn main(args: [str..]): c_int {
                         print_channels(&channels);
                     }
                     match event.scancode {
-                        Scancode::R => nes.reset(),
+                        Scancode::R => {
+                            if event.modifiers & (0x40 | 0x80) != 0 {
+                                nes = Nes::new(
+                                    *nes.input(),
+                                    cart,
+                                    cart.has_battery.then_some(nes.sram()),
+                                );
+                                println("executed hard reset");
+                            } else {
+                                nes.reset();
+                                println("executed soft reset");
+                            }
+                        }
                         Scancode::Num1 => modify_speed = true,
                         Scancode::Num2 => {
                             speed = 0.125.max(speed / 2.0);
@@ -208,12 +232,6 @@ fn main(args: [str..]): c_int {
                     match event.scancode {
                         Scancode::Num1 => modify_speed = false,
                         _ => {}
-                    }
-                }
-                SdlEvent::Window({event}) => {
-                    if event is WindowEvent::Close {
-                        done = true;
-                        break;
                     }
                 }
             }

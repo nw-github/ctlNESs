@@ -78,11 +78,6 @@ pub struct Nes {
     cycle: u64 = 0,
 
     pub fn new(ipt: Input, cart: Cartridge, prg_ram: ?[u8..]): Nes {
-        eprintln("mapper: {cart.mapper}");
-        eprintln("has battery: {cart.has_battery}");
-        eprintln("mirroring: {cart.mirroring as u8}");
-        eprintln("chr_rom: 0x{cart.chr_rom.len().to_str_radix(16)}");
-        eprintln("prg_rom: 0x{cart.prg_rom.len().to_str_radix(16)}");
         let irq_pending = std::alloc::new(false);
         Nes(
             cpu: Cpu::new(CpuBus::new(
