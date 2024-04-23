@@ -22,11 +22,12 @@ struct Timespec {
     }
 
     pub fn now(): This {
-        import fn clock_gettime(clockid: c_int, tp: *mut Timespec): c_int;
-
-        mut tp = Timespec(tv_sec: 0, tv_nsec: 0);
-        clock_gettime(1, &mut tp);
-        tp
+        //         import fn clock_gettime(clockid: c_int, tp: *mut Timespec): c_int;
+        // 
+        //         mut tp = Timespec(tv_sec: 0, tv_nsec: 0);
+        //         clock_gettime(1, &mut tp);
+        //         tp
+        Timespec::from_millis(sdl::get_ticks())
     }
 
     pub fn as_nanos(this): u64 {
@@ -40,6 +41,14 @@ struct Timespec {
     pub fn as_seconds(this): f64 {
         this.tv_sec as! f64 + (this.tv_nsec as! f64 / 1000000000.0)
     }
+
+    pub fn from_millis(ms: u64): This {
+        Timespec(tv_sec: (ms / 1000) as! c_long, tv_nsec: (ms % 1000 * 1000000) as! c_long)
+    }
+
+    pub fn elapsed(this): Timespec {
+        Timespec::now() - this
+    }
 }
 
 pub struct Clock {
@@ -50,7 +59,7 @@ pub struct Clock {
     }
 
     pub fn elapsed(this): Timespec {
-        Timespec::now() - this.last
+        this.last.elapsed()
     }
 
     pub fn restart(mut this): Timespec {
