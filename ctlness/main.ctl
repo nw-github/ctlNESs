@@ -104,7 +104,9 @@ fn print_channels([a, b, t, n, d]: *[bool; 5]) {
 
 fn main(args: [str..]): c_int {
     static NAME: str = "ctlNESs";
-    static SCALE: i32 = 3;
+    const SCALE: i32 = 3;
+    const SAMPLE_RATE: uint = 48000;
+
     static KEYMAP: [Scancode: JoystickBtn] = [
         Scancode::W: JoystickBtn::Up,
         Scancode::A: JoystickBtn::Left,
@@ -146,8 +148,8 @@ fn main(args: [str..]): c_int {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
     };
-    mut nes = Nes::new(Input::new(InputMode::Keyboard), cart, save);
-    guard Audio::new() is ?mut audio else {
+    mut nes = Nes::new(Input::new(InputMode::Keyboard), cart, SAMPLE_RATE, save);
+    guard Audio::new(SAMPLE_RATE as! c_int) is ?mut audio else {
         eprintln("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
         return 1;
     }
@@ -197,6 +199,7 @@ fn main(args: [str..]): c_int {
                                 nes = Nes::new(
                                     *nes.input(),
                                     cart,
+                                    SAMPLE_RATE,
                                     cart.has_battery.then_some(nes.sram()),
                                 );
                                 println("executed hard reset");

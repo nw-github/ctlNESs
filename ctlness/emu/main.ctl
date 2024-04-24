@@ -77,12 +77,13 @@ pub struct Nes {
     irq_pending: *mut bool,
     cycle: u64 = 0,
 
-    pub fn new(ipt: Input, cart: Cartridge, prg_ram: ?[u8..]): Nes {
+    pub fn new(ipt: Input, cart: Cartridge, sample_rate: uint, prg_ram: ?[u8..]): Nes {
         let irq_pending = std::alloc::new(false);
         Nes(
             cpu: Cpu::new(CpuBus::new(
                 irq_pending:,
                 prg_ram:,
+                sample_rate:,
                 ipt,
                 match cart.mapper {
                     0 => std::alloc::new(m000::Nrom::new(cart)),

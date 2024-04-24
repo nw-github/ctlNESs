@@ -208,7 +208,7 @@ pub struct Audio {
     write_buf: uint = 0,
     write_pos: uint = 0,
 
-    pub fn new(sample_rate: c_int = 48000): ?*mut This {
+    pub fn new(sample_rate: c_int): ?*mut This {
         guard SDL_Init(SDL_INIT_AUDIO) == 0 else {
             return null;
         }

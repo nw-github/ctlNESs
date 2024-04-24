@@ -749,10 +749,16 @@ pub struct CpuBus {
     pub fn new(
         ipt: Input, 
         mapper: *dyn mut Mapper, 
+        sample_rate: uint,
         irq_pending: *mut bool, 
         prg_ram: ?[u8..] = null,
     ): This {
-        mut bus = CpuBus(ipt:, mapper:, ppu: Ppu::new(mapper), apu: Apu::new(irq_pending));
+        mut bus = CpuBus(
+            ipt:,
+            mapper:,
+            ppu: Ppu::new(mapper),
+            apu: Apu::new(sample_rate, irq_pending),
+        );
         let bus_prg_ram = bus.prg_ram[..];
         if prg_ram is ?prg_ram and prg_ram.len() == bus_prg_ram.len() {
             bus_prg_ram[..] = prg_ram;

@@ -8,10 +8,10 @@ pub union Channel {
     Dmc,
 }
 
-const SAMPLE_RATE: uint = 48000;
-
 pub struct Apu {
     buf: [f32; 0x1000] = [0.0; 0x1000],
+    sample_rate: uint,
+
     buf_pos: uint = 0,
     cycles: uint = 0,
     seq_step: uint = 0,
@@ -24,14 +24,18 @@ pub struct Apu {
     tri: Triangle = Triangle(),
     noise: Noise = Noise(),
     dmc: Dmc = Dmc(),
-    filters: [Filter; 3] = [
-        Filter::hi_pass(90.0, SAMPLE_RATE as! f64),
-        Filter::hi_pass(440.0, SAMPLE_RATE as! f64),
-        Filter::lo_pass(14000.0, SAMPLE_RATE as! f64),
-    ],
+    filters: [Filter; 3],
 
-    pub fn new(irq_pending: *mut bool): This {
-        Apu(irq_pending:)
+    pub fn new(sample_rate: uint, irq_pending: *mut bool): This {
+        Apu(
+            sample_rate:, 
+            irq_pending:,
+            filters: [
+                Filter::hi_pass(90.0, sample_rate as! f64),
+                Filter::hi_pass(440.0, sample_rate as! f64),
+                Filter::lo_pass(14000.0, sample_rate as! f64),
+            ],
+        )
     }
 
     pub fn reset(mut this) {
@@ -71,7 +75,7 @@ pub struct Apu {
             this.seq_step++;
         }
 
-        if this.cycles % (CLOCK_RATE / SAMPLE_RATE) == 0 {
+        if this.cycles % (CLOCK_RATE / this.sample_rate) == 0 {
             mut sample = this.mix();
             for filter in this.filters[..].iter_mut() {
                 filter.apply(&mut sample);
