@@ -104,7 +104,6 @@ fn print_channels([a, b, t, n, d]: *[bool; 5]) {
 
 fn main(args: [str..]): c_int {
     static NAME: str = "ctlNESs";
-    const SCALE: i32 = 3;
     const SAMPLE_RATE: uint = 48000;
 
     static KEYMAP: [Scancode: JoystickBtn] = [
@@ -129,11 +128,12 @@ fn main(args: [str..]): c_int {
         eprintln("usage: {args[0]} <file>");
         return 1;
     }
-    let save_path = path + ".nsav";
+
     guard read_bytes(*path) is ?data else {
         eprintln("couldn't read input file '{path}'");
         return 1;
     }
+
     guard Cartridge::new(data[..]) is ?cart else {
         eprintln("invalid cartridge file");
         return 1;
@@ -144,6 +144,7 @@ fn main(args: [str..]): c_int {
     eprintln("chr_rom: 0x{cart.chr_rom.len().to_str_radix(16)}");
     eprintln("prg_rom: 0x{cart.prg_rom.len().to_str_radix(16)}");
 
+    let save_path = "{path}.nsav";
     let save = if cart.has_battery and read_bytes(save_path) is ?save {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
@@ -154,7 +155,14 @@ fn main(args: [str..]): c_int {
         return 1;
     }
     defer audio.deinit();
-    guard Window::new(NAME, ppu::HPIXELS as! i32, ppu::VPIXELS as! i32, SCALE) is ?mut wnd else {
+
+    guard Window::new(
+        title: NAME,
+        width: ppu::HPIXELS as! u32,
+        height: ppu::VPIXELS as! u32,
+        scale: 3,
+        vsync: false,
+    ) is ?mut wnd else {
         eprintln("Error occurred while initializing SDL Window: {sdl::get_last_error()}");
         return 1;
     }
@@ -163,9 +171,10 @@ fn main(args: [str..]): c_int {
     audio.unpause();
 
     mut fps_clock = Clock::new();
-    mut fps_history = [60.0; 20];
+    mut fps_history = [60.0; 20][..];
     mut fpsi = 0u;
 
+    mut nes_frame = 1u;
     mut time = 0.0;
     mut clock = Clock::new();
     mut done = false;
@@ -173,6 +182,18 @@ fn main(args: [str..]): c_int {
     mut modify_speed = false;
     mut channels = [false; 5];
     while !done {
+        fps_history[fpsi++ % fps_history.len()] = fps_clock.restart().as_seconds();
+        if nes_frame % 60 == 0 {
+            mut fps = 0.0;
+            for v in fps_history.iter() {
+                fps += *v;
+            }
+            let fps = fps / fps_history.len() as! f64;
+            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
+        }
+
+        wnd.clear(Color::rgb(0, 0, 0));
+
         while wnd.poll_event() is ?event {
             match event {
                 SdlEvent::Quit => {
@@ -250,26 +271,16 @@ fn main(args: [str..]): c_int {
         }
 
         time += clock.restart().as_seconds();
-        if time < 1.0 / 60.0 {
-            continue;
+        if time >= 1.0 / 60.0 {
+            nes_frame++;
+            time -= 1.0 / 60.0;
+            while !nes.cycle() {}
+
+            audio.write(nes.audio_buffer());
+            wnd.draw_scaled(nes.video_buffer());
         }
 
-        time -= 1.0 / 60.0;
-        while !nes.cycle() {}
-
-        fps_history[fpsi++ % 20] = fps_clock.restart().as_seconds();
-        if fpsi % 60 == 0 {
-            mut fps = 0.0;
-            for v in fps_history[..].iter() {
-                fps += *v;
-            }
-            let fps = fps / fps_history[..].len() as! f64;
-            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
-        }
-
-        audio.write(nes.audio_buffer());
-        // NTSC skips first 8 scanlines
-        wnd.draw_scaled(nes.video_buffer()[8u * 256..]);
+        wnd.present();
     }
 
     if cart.has_battery {

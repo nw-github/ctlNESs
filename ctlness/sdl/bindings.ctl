@@ -8,10 +8,11 @@ pub union SDL_sem {}
 
 pub struct SDL_AudioSpec {
     pub freq: c_int,
-    pub format: u16,
+    pub format: u16, // SDL_AudioFormat
     pub channels: u8,
     pub silence: u8,
     pub samples: u16,
+    pub _padding: u16 = 0,
     pub size: u32,
     pub callback: ?fn(?*raw c_void, *raw u8, c_int),
     pub user_data: ?*raw c_void,
@@ -92,12 +93,14 @@ pub const SDL_KEYUP: u32   = 0x301;
 // pub const AUDIO_S16SYS: u16 = 0x8010;
 pub const AUDIO_F32SYS: u16 = 0x8120;
 
-// pub const SDL_PIXELFORMAT_ABGR8888: u32 = 376840196;
-// 
-// pub const SDL_TEXTUREACCESS_STREAMING: c_int = 1;
+pub const SDL_PIXELFORMAT_ABGR8888: u32 = 376840196;
+
+pub const SDL_TEXTUREACCESS_STREAMING: c_int = 1;
 
 pub const SDL_WINDOWPOS_CENTERED: c_int = 0x2fff0000;
 // pub const SDL_WINDOWPOS_UNDEFINED: c_int = 0x1fff0000;
+
+// pub const SDL_BLENDMODE_BLEND: c_int = 0x1;
 
 pub import fn SDL_Init(flags: u32): c_int;
 pub import fn SDL_CreateWindow(
@@ -117,13 +120,18 @@ pub import fn SDL_CreateWindowAndRenderer(
 ): c_int;
 pub import fn SDL_DestroyWindow(window: *mut SDL_Window);
 pub import fn SDL_UpdateWindowSurface(window: *mut SDL_Window): c_int;
+pub import fn SDL_GL_SetSwapInterval(interval: c_int): c_int;
 
+pub import fn SDL_CreateRenderer(window: *mut SDL_Window, i: c_int, flags: u32): ?*mut SDL_Renderer;
+pub import fn SDL_RenderSetVSync(renderer: *mut SDL_Renderer, vsync: c_int): c_int;
 pub import fn SDL_SetRenderDrawColor(renderer: *mut SDL_Renderer, r: u8, g: u8, b: u8, a: u8): c_int;
 pub import fn SDL_RenderClear(renderer: *mut SDL_Renderer): c_int;
 pub import fn SDL_RenderDrawPoint(renderer: *mut SDL_Renderer, x: c_int, y: c_int): c_int;
 pub import fn SDL_RenderPresent(renderer: *mut SDL_Renderer);
 pub import fn SDL_DestroyRenderer(renderer: *mut SDL_Renderer);
 pub import fn SDL_RenderSetScale(renderer: *mut SDL_Renderer, x: f32, y: f32): c_int;
+pub import fn SDL_RenderSetLogicalSize(renderer: *mut SDL_Renderer, w: c_int, h: c_int): c_int;
+pub import fn SDL_SetRenderDrawBlendMode(renderer: *mut SDL_Renderer, mode: c_int): c_int;
 pub import fn SDL_RenderCopy(
     renderer: *mut SDL_Renderer,
     texture:  *mut SDL_Texture,
@@ -137,6 +145,13 @@ pub import fn SDL_CreateTexture(
     w:        c_int,
     h:        c_int,
 ): ?*mut SDL_Texture;
+
+pub import fn SDL_UpdateTexture(
+    texture: *mut SDL_Texture,
+    rect:    ?*SDL_Rect,
+    pixels:  *c_void,
+    pitch:   c_int,
+): c_int;
 
 pub import fn SDL_LockTexture(
     texture: *mut SDL_Texture,
@@ -156,7 +171,7 @@ pub import fn SDL_Delay(ms: u32);
 pub import fn SDL_SetWindowTitle(window: *mut SDL_Window, title: *raw c_char);
 pub import fn SDL_GetWindowSurface(window: *mut SDL_Window): ?*mut SDL_Surface;
 pub import fn SDL_CreateRGBSurfaceFrom(
-    pixels: *raw c_void,
+    pixels:    *raw c_void,
     kw width:  c_int,
     kw height: c_int,
     kw depth:  c_int,

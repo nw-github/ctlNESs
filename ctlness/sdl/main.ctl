@@ -114,13 +114,13 @@ pub struct Color {
 }
 
 pub struct Window {
-    window:  *mut SDL_Window,
-    surface: *mut SDL_Surface,
-    width:   c_int,
-    height:  c_int,
-    scale:   c_int,
+    window:   *mut SDL_Window,
+    renderer: Renderer,
+    width:    c_int,
+    height:   c_int,
+    scale:    c_int,
 
-    pub fn new(title: str, width: i32, height: i32, scale: i32): ?This {
+    pub fn new(kw title: str, kw width: u32, kw height: u32, kw scale: u32, kw vsync: bool): ?This {
         guard SDL_Init(SDL_INIT_VIDEO) == 0 else {
             return null;
         }
@@ -130,7 +130,7 @@ pub struct Window {
         let scale = scale as! c_int;
 
         let window = if SDL_CreateWindow(
-            title.as_raw() as *raw c_char,
+            title.as_raw() as *raw c_char, // zero terminate
             x: SDL_WINDOWPOS_CENTERED,
             y: SDL_WINDOWPOS_CENTERED,
             w: width * scale,
@@ -141,36 +141,58 @@ pub struct Window {
             return null;
         };
 
-        if SDL_GetWindowSurface(window) is ?surface {
-            return Window(window:, surface:, width:, height:, scale:);
+        guard Window::create_renderer(window, width, height, scale, vsync) is ?mut renderer else {
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            return null;
         }
 
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        null
+        Window(window:, width:, height:, scale:, renderer:)
+    }
+
+    fn create_renderer(wnd: *mut SDL_Window, w: c_int, h: c_int, s: c_int, vsync: bool): ?Renderer {
+        // accelerated | vsync (0x2 | 0x4)
+        guard SDL_CreateRenderer(wnd, -1, 0x2 | (vsync as u32 << 2)) is ?renderer else {
+            return null;
+        }
+
+        guard SDL_CreateTexture(
+            renderer, 
+            SDL_PIXELFORMAT_ABGR8888, 
+            SDL_TEXTUREACCESS_STREAMING, 
+            w, 
+            h,
+        ) is ?texture else {
+            SDL_DestroyRenderer(renderer);
+            return null;
+        }
+
+        SDL_RenderSetLogicalSize(renderer, w * s, h * s);
+        Renderer(renderer:, texture:)
     }
 
     pub fn deinit(mut this) {
+        this.renderer.deinit();
+
         SDL_DestroyWindow(this.window);
         SDL_Quit(); // TODO: this should be somewhere else
     }
 
-    pub fn draw_scaled(mut this, pixels: [u32..]): bool {
-        let surface = if SDL_CreateRGBSurfaceFrom(
-            pixels: pixels.as_raw() as *raw c_void,
-            width: this.width,
-            height: (pixels.len() / this.width as uint) as! c_int,
-            depth: 32,
-            pitch: this.width * 4,
-            rmask: 0x000000ff,
-            gmask: 0x0000ff00,
-            bmask: 0x00ff0000,
-            amask: 0xff000000,
-        ) is ?surface { surface } else { return false; };
+    pub fn draw_scaled(mut this, src: [u32..]): bool {
+        mut dst: *raw c_void;
+        mut pitch = 0ic;
+        guard SDL_LockTexture(this.renderer.texture, null, &raw dst, &mut pitch) == 0 else {
+            return false;
+        }
 
-        SDL_BlitScaled(surface, null, this.surface, null);
-        SDL_UpdateWindowSurface(this.window);
-        SDL_FreeSurface(surface);
+        let dst = unsafe std::span::SpanMut::new(
+            dst as *raw u32,
+            (pitch / 4 * this.height) as uint,
+        );
+        let min = dst.len().min(src.len());
+        dst[..min] = src[..min];
+
+        SDL_UnlockTexture(this.renderer.texture);
         true
     }
 
@@ -195,34 +217,33 @@ pub struct Window {
             }
         }
     }
+
+    pub fn clear(mut this, color: Color) {
+        this.renderer.clear(color);
+    }
+
+    pub fn present(mut this) {
+        this.renderer.present(this);
+    }
 }
 
-const BUF_COUNT: uint = 3;
-const BUF_SIZE: uint = 1024 * 2;
+const BUF_SIZE: uint = 1024 * 4;
 
 pub struct Audio {
     device: u32,
-    sem: *mut SDL_sem,
-    queue: [f32],
-    read_buf: uint = 0,
-    write_buf: uint = 0,
-    write_pos: uint = 0,
+    buf: rb::RingBuffer<f32>,
 
     pub fn new(sample_rate: c_int): ?*mut This {
         guard SDL_Init(SDL_INIT_AUDIO) == 0 else {
             return null;
         }
 
-        guard SDL_CreateSemaphore(BUF_COUNT as! u32 - 1) is ?sem else {
-            return null;
-        }
-
-        mut self = std::alloc::new(Audio(device: 0, sem:, queue: @[]));
+        mut self = std::alloc::new(Audio(device: 0, buf: rb::RingBuffer::new(BUF_SIZE)));
         let spec = SDL_AudioSpec(
             freq: sample_rate,
             format: AUDIO_F32SYS,
             channels: 1,
-            samples: BUF_SIZE as! u16,
+            samples: (BUF_SIZE / 2) as! u16,
             silence: 0,
             size: 0,
             callback: Audio::sdl_callback,
@@ -230,17 +251,14 @@ pub struct Audio {
         );
         self.device = SDL_OpenAudioDevice(null, 0, &spec, null, 0);
         guard self.device != 0 else {
-            SDL_DestroySemaphore(sem);
             return null;
         }
 
-        self.queue = @[0.0; BUF_SIZE * BUF_COUNT];
         self
     }
 
     pub fn deinit(mut this) {
         SDL_CloseAudioDevice(this.device);
-        SDL_DestroySemaphore(this.sem);
     }
 
     pub fn unpause(mut this) {
@@ -251,23 +269,14 @@ pub struct Audio {
         SDL_PauseAudioDevice(this.device, 1);
     }
 
-    pub fn queue_len(this): uint {
-        let free = SDL_SemValue(this.sem) as uint * BUF_SIZE + (BUF_SIZE - this.write_pos);
-        BUF_SIZE - BUF_COUNT - free
+    pub fn buffer(mut this): *mut rb::RingBuffer<f32> {
+        &mut this.buf
     }
 
-    pub fn write(mut this, mut samples: [f32..]) {
-        while !samples.is_empty() {
-            let n = (BUF_SIZE - this.write_pos).min(samples.len());
-            this.queue[this.write_buf * BUF_SIZE + this.write_pos..][..n] = samples[..n];
-
-            samples = samples[n..];
-            this.write_pos += n;
-
-            if this.write_pos >= BUF_SIZE {
-                this.write_pos = 0;
-                this.write_buf = (this.write_buf + 1) % BUF_COUNT;
-                SDL_SemWait(this.sem);
+    pub fn write(mut this, samples: [f32..]) {
+        for sample in samples.iter() {
+            if this.buf.push(*sample) is ?_ {
+                // delay(1);
             }
         }
     }
@@ -275,21 +284,27 @@ pub struct Audio {
     fn sdl_callback(user_data: ?*raw c_void, samples: *raw u8, len: c_int) {
         let self = unsafe user_data! as *mut Audio;
         let samples = unsafe std::span::SpanMut::new(samples as *raw f32, len as uint / 4);
-        guard SDL_SemValue(self.sem) < BUF_COUNT as! u32 - 1 else {
-            return samples.fill(0.0);
+        for sample in samples.iter_mut() {
+            *sample = self.buf.pop() ?? 0.0;
         }
-
-        samples[..] = self.queue[self.read_buf * BUF_SIZE..][..samples.len()];
-        self.read_buf = (self.read_buf + 1) % BUF_COUNT;
-        SDL_SemPost(self.sem);
     }
 }
 
-pub struct Renderer {
+struct Renderer {
     renderer: *mut SDL_Renderer,
+    texture: *mut SDL_Texture,
 
-    pub fn set_scale(mut this, scale: f32): bool {
+    fn set_scale(mut this, scale: f32): bool {
         SDL_RenderSetScale(this.renderer, scale, scale) == 0
+    }
+
+    fn set_logical_size(mut this, w: c_int, h: c_int): bool {
+        SDL_RenderSetLogicalSize(this.renderer, w, h) == 0
+    }
+
+    pub fn set_vsync(mut this, enabled: bool): bool {
+        // SDL_GL_SetSwapInterval(enabled as c_int) == 0
+        SDL_RenderSetVSync(this.renderer, enabled as c_int) == 0
     }
 
     pub fn set_draw_color(mut this, {r, g, b, a}: Color) {
@@ -305,11 +320,18 @@ pub struct Renderer {
         SDL_RenderClear(this.renderer);
     }
 
-    pub fn present(mut this) {
+    pub fn present(mut this, window: *Window) {
+        SDL_RenderCopy(this.renderer, this.texture, null, &SDL_Rect(
+            x: 0, 
+            y: 0, 
+            w: window.width * window.scale, 
+            h: window.height * window.scale
+        ));
         SDL_RenderPresent(this.renderer);
     }
 
     pub fn deinit(mut this) {
+        SDL_DestroyTexture(this.texture);
         SDL_DestroyRenderer(this.renderer);
     }
 }
