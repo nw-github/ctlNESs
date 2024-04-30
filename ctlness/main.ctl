@@ -149,8 +149,8 @@ fn main(args: [str..]): c_int {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
     };
-    mut nes = Nes::new(Input::new(InputMode::Keyboard), cart, SAMPLE_RATE, save);
-    guard Audio::new(SAMPLE_RATE as! c_int) is ?mut audio else {
+    mut nes = Nes::new(Input::new(InputMode::Keyboard), cart, save);
+    guard Audio::new(sample_rate: SAMPLE_RATE) is ?mut audio else {
         eprintln("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
         return 1;
     }
@@ -169,6 +169,7 @@ fn main(args: [str..]): c_int {
     defer wnd.deinit();
 
     audio.unpause();
+    mut mixer = audio::Mixer::new(SAMPLE_RATE as! f64);
 
     mut fps_clock = Clock::new();
     mut fps_history = [60.0; 20][..];
@@ -220,7 +221,6 @@ fn main(args: [str..]): c_int {
                                 nes = Nes::new(
                                     *nes.input(),
                                     cart,
-                                    SAMPLE_RATE,
                                     cart.has_battery.then_some(nes.sram()),
                                 );
                                 println("executed hard reset");
@@ -276,7 +276,7 @@ fn main(args: [str..]): c_int {
             time -= 1.0 / 60.0;
             while !nes.cycle() {}
 
-            audio.write(nes.audio_buffer());
+            mixer.process(audio.buffer(), nes.audio_buffer(), null);
             wnd.draw_scaled(nes.video_buffer());
         }
 

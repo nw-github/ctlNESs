@@ -9,10 +9,6 @@ pub union Channel {
 }
 
 pub struct Apu {
-    buf: [f32; 0x1000] = [0.0; 0x1000],
-    sample_rate: uint,
-
-    buf_pos: uint = 0,
     cycles: uint = 0,
     seq_step: uint = 0,
     irq_pending: *mut bool,
@@ -24,28 +20,15 @@ pub struct Apu {
     tri: Triangle = Triangle(),
     noise: Noise = Noise(),
     dmc: Dmc = Dmc(),
-    filters: [Filter; 3],
 
-    pub fn new(sample_rate: uint, irq_pending: *mut bool): This {
-        Apu(
-            sample_rate:, 
-            irq_pending:,
-            filters: [
-                Filter::hi_pass(90.0, sample_rate as! f64),
-                Filter::hi_pass(440.0, sample_rate as! f64),
-                Filter::lo_pass(14000.0, sample_rate as! f64),
-            ],
-        )
+    pub fn new(irq_pending: *mut bool): This {
+        Apu(irq_pending:)
     }
 
     pub fn reset(mut this) {
         this.cycles = 0;
         this.seq_step = 0;
         this.write_frame_counter(0);
-    }
-
-    pub fn audio_buffer(mut this): [f32..] {
-        this.buf[..std::mem::replace(&mut this.buf_pos, 0)]
     }
 
     pub fn step(mut this, bus: *mut CpuBus): bool {
@@ -73,18 +56,6 @@ pub struct Apu {
             }
 
             this.seq_step++;
-        }
-
-        if this.cycles % (CLOCK_RATE / this.sample_rate) == 0 {
-            mut sample = this.mix();
-            for filter in this.filters[..].iter_mut() {
-                filter.apply(&mut sample);
-            }
-
-            this.buf[this.buf_pos] = sample as! f32;
-            if this.buf_pos < this.buf[..].len() - 1 {
-                this.buf_pos++;
-            }
         }
 
         std::mem::replace(&mut this.dmc.stall, false)
@@ -217,7 +188,7 @@ pub struct Apu {
         }
     }
 
-    fn mix(this): f64 {
+    pub fn output(this): f64 {
         let pulse = this.pulse1.output() + this.pulse2.output();
         let tnd   = this.tri.output() * 3 + this.noise.output() * 2 + this.dmc.output();
         PULSE_TABLE[pulse as uint % PULSE_TABLE[..].len()]
@@ -566,43 +537,6 @@ struct Dmc {
         }
 
         this.output_val
-    }
-}
-
-struct Filter {
-    rc: f64,
-    dt: f64,
-    a: f64,
-    x: f64 = 0.0,
-    y: f64 = 0.0,
-    lo: bool,
-
-    pub fn lo_pass(freq: f64, sample_rate: f64): Filter {
-        Filter::new(freq, sample_rate, true)
-    }
-
-    pub fn hi_pass(freq: f64, sample_rate: f64): Filter {
-        Filter::new(freq, sample_rate, false)
-    }
-
-    pub fn apply(mut this, sample: *mut f64) {
-        this.y = if this.lo {
-            this.a * *sample + (1.0 - this.a) * this.y
-        } else {
-            this.a * this.y + this.a * (sample - this.x)
-        };
-        this.x = *sample;
-        *sample = this.y;
-    }
-
-    fn new(freq: f64, sample_rate: f64, lo: bool): Filter {
-        let rc = 1.0 / (2.0 * f64::pi() * freq);
-        let dt = 1.0 / sample_rate;
-        if lo {
-            Filter(rc:, dt:, a: dt / (rc + dt), lo:)
-        } else {
-            Filter(rc:, dt:, a: rc / (rc + dt), lo:)
-        }
     }
 }
 

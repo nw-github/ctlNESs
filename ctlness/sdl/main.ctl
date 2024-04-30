@@ -227,23 +227,21 @@ pub struct Window {
     }
 }
 
-const BUF_SIZE: uint = 1024 * 4;
-
 pub struct Audio {
     device: u32,
     buf: rb::RingBuffer<f32>,
 
-    pub fn new(sample_rate: c_int): ?*mut This {
+    pub fn new(kw sample_rate: uint, kw buf_size: uint = 1024 * 4): ?*mut This {
         guard SDL_Init(SDL_INIT_AUDIO) == 0 else {
             return null;
         }
 
-        mut self = std::alloc::new(Audio(device: 0, buf: rb::RingBuffer::new(BUF_SIZE)));
+        let self = std::alloc::new(Audio(device: 0, buf: rb::RingBuffer::new(buf_size)));
         let spec = SDL_AudioSpec(
-            freq: sample_rate,
+            freq: sample_rate as! c_int,
             format: AUDIO_F32SYS,
             channels: 1,
-            samples: (BUF_SIZE / 2) as! u16,
+            samples: (buf_size / 2) as! u16,
             silence: 0,
             size: 0,
             callback: Audio::sdl_callback,
@@ -271,14 +269,6 @@ pub struct Audio {
 
     pub fn buffer(mut this): *mut rb::RingBuffer<f32> {
         &mut this.buf
-    }
-
-    pub fn write(mut this, samples: [f32..]) {
-        for sample in samples.iter() {
-            if this.buf.push(*sample) is ?_ {
-                // delay(1);
-            }
-        }
     }
 
     fn sdl_callback(user_data: ?*raw c_void, samples: *raw u8, len: c_int) {
@@ -337,11 +327,7 @@ struct Renderer {
 }
 
 pub fn get_last_error(): str {
-    let error = SDL_GetError();
-    unsafe str::from_utf8_unchecked(std::span::Span::new(
-        error as *raw u8, 
-        std::intrin::strlen(error) as! uint,
-    ))
+    unsafe str::from_cstr_unchecked(SDL_GetError())
 }
 
 pub fn delay(ms: u32) {

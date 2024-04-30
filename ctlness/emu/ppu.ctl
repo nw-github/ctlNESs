@@ -48,10 +48,13 @@ pub union PpuResult {
 pub struct Ppu {
     pub buf: [mut u32..] = @[0u32; HPIXELS * VPIXELS][..],
 
-    bus: PpuBus,
+    mapper: *dyn mut Mapper,
+    palette: [u8; 0x20] = [0; 0x20],
+    ram: [u8; 0x800] = [0; 0x800],
     oam: [u8; 64 * 4] = [0; 64 * 4],
     sprites: [u8; 8] = [0; 8],
     sprite_count: uint = 0,
+
     state: State = State::PreRender,
     cycle: u16 = 0,
     scanline: u16 = 0,
@@ -71,7 +74,7 @@ pub struct Ppu {
     data_buf: u8 = 0,
 
     pub fn new(mapper: *dyn mut Mapper): This {
-        Ppu(bus: PpuBus::new(mapper))
+        Ppu(mapper:)
     }
 
     pub fn reset(mut this) {
@@ -105,7 +108,7 @@ pub struct Ppu {
                 }
 
                 if this.cycle == 260 and rendering_on {
-                    this.bus.mapper.scanline();
+                    this.mapper.scanline();
                 }
             }
             State::Render => this.render(),
@@ -151,14 +154,14 @@ pub struct Ppu {
             if show_bg {
                 let x_fine = (this.x as u16 + x) % 8;
                 if this.mask.show_bg_l8() or x >= 8 {
-                    let tile = this.bus.read((this.v & 0xfff) | 0x2000) as u16;
+                    let tile = this.read((this.v & 0xfff) | 0x2000) as u16;
                     let addr = (tile * 16 + ((this.v >> 12) & 0x7)) | this.ctrl.bg_tile_addr();
 
-                    bg_color = (this.bus.read(addr) >> (x_fine ^ 7)) & 1;
-                    bg_color |= ((this.bus.read(addr + 8) >> (x_fine ^ 7)) & 1) << 1;
+                    bg_color = (this.read(addr) >> (x_fine ^ 7)) & 1;
+                    bg_color |= ((this.read(addr + 8) >> (x_fine ^ 7)) & 1) << 1;
                     bg_opaque = bg_color != 0;
 
-                    let attr = this.bus.read(
+                    let attr = this.read(
                         0x23c0 | (this.v & 0xc00) | ((this.v >> 4) & 0x38) | ((this.v >> 2) & 0x7)
                     );
                     let shift = ((this.v >> 4) & 4) | (this.v & 2);
@@ -200,8 +203,8 @@ pub struct Ppu {
                         ((tile >> 1) * 32 + y_offs) | ((tile & 1) << 12)
                     };
 
-                    spr_color |= (this.bus.read(addr) >> x_shift) & 1;
-                    spr_color |= ((this.bus.read(addr + 8) >> x_shift) & 1) << 1;
+                    spr_color |= (this.read(addr) >> x_shift) & 1;
+                    spr_color |= ((this.read(addr + 8) >> x_shift) & 1) << 1;
                     spr_opaque = spr_color != 0;
                     if !spr_opaque {
                         continue;
@@ -226,7 +229,7 @@ pub struct Ppu {
                 bg_color
             };
 
-            mut idx = this.bus.read(0x3f00 + (palette as u16));
+            mut idx = this.read(0x3f00 + (palette as u16));
             if idx as uint >= PALETTE[..].len() {
                 // eprintln("attempt to render bad palette index {idx}");
                 idx = 0;
@@ -254,7 +257,7 @@ pub struct Ppu {
         }
 
         if this.cycle == 260 and show_bg and show_spr {
-            this.bus.mapper.scanline();
+            this.mapper.scanline();
         }
 
         if this.cycle >= SCANLINE_END_CYCLE {
@@ -315,7 +318,7 @@ pub struct Ppu {
 
     // r $2007
     pub fn peek_data(this): u8 {
-        this.bus.read(this.v)
+        this.read(this.v)
     }
 
     // w $2000
@@ -364,7 +367,7 @@ pub struct Ppu {
 
     // w $2007
     pub fn write_data(mut this, val: u8) {
-        this.bus.write(this.v, val);
+        this.write(this.v, val);
         this.v += this.ctrl.increment();
     }
 
@@ -372,18 +375,8 @@ pub struct Ppu {
     pub fn write_oam_dma(mut this, idx: u8, val: u8) {
         this.oam[this.oam_addr.wrapping_add(idx)] = val;
     }
-}
 
-struct PpuBus {
-    palette: [u8; 0x20] = [0; 0x20],
-    ram: [u8; 0x800] = [0; 0x800],
-    mapper: *dyn mut Mapper,
-
-    pub fn new(mapper: *dyn mut Mapper): This {
-        PpuBus(mapper:)
-    }
-
-    pub fn read(this, addr: u16): u8 {
+    fn read(this, addr: u16): u8 {
         match addr {
             ..0x2000 => this.mapper.read_chr(addr),
             ..0x3f00 => {
@@ -405,7 +398,7 @@ struct PpuBus {
         }
     }
 
-    pub fn write(mut this, addr: u16, val: u8) {
+    fn write(mut this, addr: u16, val: u8) {
         match addr {
             ..0x2000 => this.mapper.write_chr(addr, val),
             ..0x3f00 => {

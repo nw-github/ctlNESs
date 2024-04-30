@@ -72,18 +72,20 @@ pub struct Input {
     }
 }
 
+pub const NTSC_CLOCK_RATE: f64 = 1789772.6;
+
 pub struct Nes {
     cpu: Cpu,
     irq_pending: *mut bool,
     cycle: u64 = 0,
+    audio: [f64],
 
-    pub fn new(ipt: Input, cart: Cartridge, sample_rate: uint, prg_ram: ?[u8..]): Nes {
+    pub fn new(ipt: Input, cart: Cartridge, prg_ram: ?[u8..]): Nes {
         let irq_pending = std::alloc::new(false);
         Nes(
             cpu: Cpu::new(CpuBus::new(
                 irq_pending:,
                 prg_ram:,
-                sample_rate:,
                 ipt,
                 match cart.mapper {
                     0 => std::alloc::new(m000::Nrom::new(cart)),
@@ -95,6 +97,7 @@ pub struct Nes {
                 }),
             ),
             irq_pending:,
+            audio: @[0.0; (NTSC_CLOCK_RATE * 0.02) as! uint],
         )
     }
 
@@ -108,7 +111,11 @@ pub struct Nes {
 
     pub fn video_buffer(this): [u32..] { this.cpu.bus.ppu.buf[..] }
 
-    pub fn audio_buffer(mut this): [f32..] { this.cpu.bus.apu.audio_buffer() }
+    pub fn audio_buffer(mut this): [f64..] {
+        let buf = this.audio[..];
+        this.audio.clear();
+        buf
+    }
 
     pub fn sram(this): [u8..] { this.cpu.bus.sram() }
 
@@ -120,6 +127,7 @@ pub struct Nes {
 
         if this.cycle % 3 == 0 {
             let dmc_stall = this.cpu.bus.apu.step(&mut this.cpu.bus);
+            this.audio.push(this.cpu.bus.apu.output());
             if std::mem::replace(this.irq_pending, false) {
                 this.cpu.irq_pending = true;
             }
