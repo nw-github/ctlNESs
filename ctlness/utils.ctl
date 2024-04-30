@@ -32,12 +32,12 @@ pub extension ReadExt for [u8..] {
 mod __libc {
     use super::File;
 
-    pub import fn fopen(path: *c_char, mode: *c_char): ?*mut File;
-    pub import fn fseek(stream: *mut File, offset: c_long, whence: c_int): c_int;
-    pub import fn fread(ptr: *mut c_void, size: uint, nmemb: uint, stream: *mut File): uint;
-    pub import fn fwrite(ptr: *c_void, size: uint, nmemb: uint, stream: *mut File): uint;
-    pub import fn ftell(stream: *mut File): c_long;
-    pub import fn fclose(stream: *mut File): c_int;
+    pub extern fn fopen(path: *c_char, mode: *c_char): ?*mut File;
+    pub extern fn fseek(stream: *mut File, offset: c_long, whence: c_int): c_int;
+    pub extern fn fread(ptr: *mut c_void, size: uint, nmemb: uint, stream: *mut File): uint;
+    pub extern fn fwrite(ptr: *c_void, size: uint, nmemb: uint, stream: *mut File): uint;
+    pub extern fn ftell(stream: *mut File): c_long;
+    pub extern fn fclose(stream: *mut File): c_int;
 }
 
 pub union SeekPos {

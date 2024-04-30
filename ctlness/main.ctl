@@ -22,7 +22,7 @@ struct Timespec {
     }
 
     pub fn now(): This {
-        //         import fn clock_gettime(clockid: c_int, tp: *mut Timespec): c_int;
+        //         extern fn clock_gettime(clockid: c_int, tp: *mut Timespec): c_int;
         // 
         //         mut tp = Timespec(tv_sec: 0, tv_nsec: 0);
         //         clock_gettime(1, &mut tp);

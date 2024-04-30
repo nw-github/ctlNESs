@@ -129,17 +129,17 @@ pub struct Window {
         let height = height as! c_int;
         let scale = scale as! c_int;
 
-        let window = if SDL_CreateWindow(
+        guard SDL_CreateWindow(
             title.as_raw() as *raw c_char, // zero terminate
             x: SDL_WINDOWPOS_CENTERED,
             y: SDL_WINDOWPOS_CENTERED,
             w: width * scale,
             h: height * scale,
             flags: 0,
-        ) is ?window { window } else {
+        ) is ?window else {
             SDL_Quit();
             return null;
-        };
+        }
 
         guard Window::create_renderer(window, width, height, scale, vsync) is ?mut renderer else {
             SDL_DestroyWindow(window);

@@ -102,8 +102,8 @@ pub const SDL_WINDOWPOS_CENTERED: c_int = 0x2fff0000;
 
 // pub const SDL_BLENDMODE_BLEND: c_int = 0x1;
 
-pub import fn SDL_Init(flags: u32): c_int;
-pub import fn SDL_CreateWindow(
+pub extern fn SDL_Init(flags: u32): c_int;
+pub extern fn SDL_CreateWindow(
     title: *raw c_char,
     kw x: c_int,
     kw y: c_int,
@@ -111,34 +111,34 @@ pub import fn SDL_CreateWindow(
     kw h: c_int,
     flags: u32,
 ): ?*mut SDL_Window;
-pub import fn SDL_CreateWindowAndRenderer(
+pub extern fn SDL_CreateWindowAndRenderer(
     width:    c_int,
     height:   c_int,
     flags:    u32,
     window:   *mut ?*mut SDL_Window,
     renderer: *mut ?*mut SDL_Renderer,
 ): c_int;
-pub import fn SDL_DestroyWindow(window: *mut SDL_Window);
-pub import fn SDL_UpdateWindowSurface(window: *mut SDL_Window): c_int;
-pub import fn SDL_GL_SetSwapInterval(interval: c_int): c_int;
+pub extern fn SDL_DestroyWindow(window: *mut SDL_Window);
+pub extern fn SDL_UpdateWindowSurface(window: *mut SDL_Window): c_int;
+pub extern fn SDL_GL_SetSwapInterval(interval: c_int): c_int;
 
-pub import fn SDL_CreateRenderer(window: *mut SDL_Window, i: c_int, flags: u32): ?*mut SDL_Renderer;
-pub import fn SDL_RenderSetVSync(renderer: *mut SDL_Renderer, vsync: c_int): c_int;
-pub import fn SDL_SetRenderDrawColor(renderer: *mut SDL_Renderer, r: u8, g: u8, b: u8, a: u8): c_int;
-pub import fn SDL_RenderClear(renderer: *mut SDL_Renderer): c_int;
-pub import fn SDL_RenderDrawPoint(renderer: *mut SDL_Renderer, x: c_int, y: c_int): c_int;
-pub import fn SDL_RenderPresent(renderer: *mut SDL_Renderer);
-pub import fn SDL_DestroyRenderer(renderer: *mut SDL_Renderer);
-pub import fn SDL_RenderSetScale(renderer: *mut SDL_Renderer, x: f32, y: f32): c_int;
-pub import fn SDL_RenderSetLogicalSize(renderer: *mut SDL_Renderer, w: c_int, h: c_int): c_int;
-pub import fn SDL_SetRenderDrawBlendMode(renderer: *mut SDL_Renderer, mode: c_int): c_int;
-pub import fn SDL_RenderCopy(
+pub extern fn SDL_CreateRenderer(window: *mut SDL_Window, i: c_int, flags: u32): ?*mut SDL_Renderer;
+pub extern fn SDL_RenderSetVSync(renderer: *mut SDL_Renderer, vsync: c_int): c_int;
+pub extern fn SDL_SetRenderDrawColor(renderer: *mut SDL_Renderer, r: u8, g: u8, b: u8, a: u8): c_int;
+pub extern fn SDL_RenderClear(renderer: *mut SDL_Renderer): c_int;
+pub extern fn SDL_RenderDrawPoint(renderer: *mut SDL_Renderer, x: c_int, y: c_int): c_int;
+pub extern fn SDL_RenderPresent(renderer: *mut SDL_Renderer);
+pub extern fn SDL_DestroyRenderer(renderer: *mut SDL_Renderer);
+pub extern fn SDL_RenderSetScale(renderer: *mut SDL_Renderer, x: f32, y: f32): c_int;
+pub extern fn SDL_RenderSetLogicalSize(renderer: *mut SDL_Renderer, w: c_int, h: c_int): c_int;
+pub extern fn SDL_SetRenderDrawBlendMode(renderer: *mut SDL_Renderer, mode: c_int): c_int;
+pub extern fn SDL_RenderCopy(
     renderer: *mut SDL_Renderer,
     texture:  *mut SDL_Texture,
     src:      ?*SDL_Rect,
     dst:      ?*SDL_Rect,
 ): c_int;
-pub import fn SDL_CreateTexture(
+pub extern fn SDL_CreateTexture(
     renderer: *mut SDL_Renderer,
     format:   u32,
     access:   c_int,
@@ -146,31 +146,31 @@ pub import fn SDL_CreateTexture(
     h:        c_int,
 ): ?*mut SDL_Texture;
 
-pub import fn SDL_UpdateTexture(
+pub extern fn SDL_UpdateTexture(
     texture: *mut SDL_Texture,
     rect:    ?*SDL_Rect,
     pixels:  *c_void,
     pitch:   c_int,
 ): c_int;
 
-pub import fn SDL_LockTexture(
+pub extern fn SDL_LockTexture(
     texture: *mut SDL_Texture,
     rect:    ?*SDL_Rect,
     pixels:  *raw *raw c_void,
     pitch:   *mut c_int,
 ): c_int;
-pub import fn SDL_UnlockTexture(texture: *mut SDL_Texture);
-pub import fn SDL_DestroyTexture(texture: *mut SDL_Texture);
+pub extern fn SDL_UnlockTexture(texture: *mut SDL_Texture);
+pub extern fn SDL_DestroyTexture(texture: *mut SDL_Texture);
 
-pub import fn SDL_PollEvent(event: *mut SDL_Event): c_int;
-pub import fn SDL_GetTicks64(): u64;
-pub import fn SDL_Quit();
-pub import fn SDL_GetError(): *c_char;
-pub import fn SDL_Delay(ms: u32);
+pub extern fn SDL_PollEvent(event: *mut SDL_Event): c_int;
+pub extern fn SDL_GetTicks64(): u64;
+pub extern fn SDL_Quit();
+pub extern fn SDL_GetError(): *c_char;
+pub extern fn SDL_Delay(ms: u32);
 
-pub import fn SDL_SetWindowTitle(window: *mut SDL_Window, title: *raw c_char);
-pub import fn SDL_GetWindowSurface(window: *mut SDL_Window): ?*mut SDL_Surface;
-pub import fn SDL_CreateRGBSurfaceFrom(
+pub extern fn SDL_SetWindowTitle(window: *mut SDL_Window, title: *raw c_char);
+pub extern fn SDL_GetWindowSurface(window: *mut SDL_Window): ?*mut SDL_Surface;
+pub extern fn SDL_CreateRGBSurfaceFrom(
     pixels:    *raw c_void,
     kw width:  c_int,
     kw height: c_int,
@@ -182,28 +182,28 @@ pub import fn SDL_CreateRGBSurfaceFrom(
     kw amask:  u32,
 ): ?*mut SDL_Surface;
 #(c_name(SDL_UpperBlitScaled))
-pub import fn SDL_BlitScaled(
+pub extern fn SDL_BlitScaled(
     src:     *mut SDL_Surface,
     srcrect: ?*SDL_Rect,
     dst:     *mut SDL_Surface,
     dstrect: ?*mut SDL_Rect,
 ): c_int;
-pub import fn SDL_FreeSurface(surface: *mut SDL_Surface);
+pub extern fn SDL_FreeSurface(surface: *mut SDL_Surface);
 
-pub import fn SDL_OpenAudioDevice(
+pub extern fn SDL_OpenAudioDevice(
     device:          ?*c_char,
     is_capture:      c_int,
     desired:         *SDL_AudioSpec,
     obtained:        ?*mut SDL_AudioSpec,
     allowed_changes: c_int,
 ): u32;
-pub import fn SDL_PauseAudioDevice(dev: u32, pause_on: c_int);
-pub import fn SDL_QueueAudio(dev: u32, data: *c_void, len: u32): c_int;
-pub import fn SDL_ClearQueuedAudio(dev: u32);
-pub import fn SDL_CloseAudioDevice(dev: u32);
+pub extern fn SDL_PauseAudioDevice(dev: u32, pause_on: c_int);
+pub extern fn SDL_QueueAudio(dev: u32, data: *c_void, len: u32): c_int;
+pub extern fn SDL_ClearQueuedAudio(dev: u32);
+pub extern fn SDL_CloseAudioDevice(dev: u32);
 
-pub import fn SDL_CreateSemaphore(val: u32): ?*mut SDL_sem;
-pub import fn SDL_DestroySemaphore(sem: *mut SDL_sem);
-pub import fn SDL_SemWait(sem: *mut SDL_sem): c_int;
-pub import fn SDL_SemValue(sem: *mut SDL_sem): u32;
-pub import fn SDL_SemPost(sem: *mut SDL_sem): c_int;
+pub extern fn SDL_CreateSemaphore(val: u32): ?*mut SDL_sem;
+pub extern fn SDL_DestroySemaphore(sem: *mut SDL_sem);
+pub extern fn SDL_SemWait(sem: *mut SDL_sem): c_int;
+pub extern fn SDL_SemValue(sem: *mut SDL_sem): u32;
+pub extern fn SDL_SemPost(sem: *mut SDL_sem): c_int;
