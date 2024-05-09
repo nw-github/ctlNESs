@@ -18,7 +18,7 @@ struct Control {
 }
 
 pub struct Mmc1 {
-    cart: Cartridge,
+    cart: Cart,
     chr_ram: ?[u8; 0x2000],
 
     write: u8 = 0,
@@ -33,7 +33,7 @@ pub struct Mmc1 {
     prg_bank0: uint = 0,
     prg_bank1: uint = 0,
 
-    pub fn new(cart: Cartridge): This {
+    pub fn new(cart: Cart): This {
         Mmc1(
             chr_ram: if cart.chr_rom.is_empty() { [0u8; 0x2000] },
             prg_bank1: cart.prg_rom.len() - 0x4000,

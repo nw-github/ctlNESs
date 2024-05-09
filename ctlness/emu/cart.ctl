@@ -6,7 +6,7 @@ pub union Mirroring {
     OneScreenB,
 }
 
-pub struct Cartridge {
+pub struct Cart {
     pub chr_rom: [u8..],
     pub prg_rom: [u8..],
     pub mirroring: Mirroring,
@@ -27,7 +27,7 @@ pub struct Cartridge {
             eprintln("cartridge has trainer present, ignoring it");
             data.read_exact(512);
         }
-        Cartridge(
+        Cart(
             mirroring: if flags6 & 8 != 0 {
                 Mirroring::FourScreen
             } else {

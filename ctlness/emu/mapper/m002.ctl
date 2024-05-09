@@ -1,11 +1,11 @@
 use ctlness::emu::cart::*;
 
 pub struct UxRom {
-    cart: Cartridge,
+    cart: Cart,
     bank: u8 = 0,
     chr_ram: ?[u8; 0x2000],
 
-    pub fn new(cart: Cartridge): This {
+    pub fn new(cart: Cart): This {
         UxRom(
             chr_ram: if cart.chr_rom.is_empty() { [0; 0x2000] },
             cart:

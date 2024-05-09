@@ -12,7 +12,7 @@ pub struct Mixer {
 
     pub fn new(sample_rate: f64): This {
         Mixer(
-            sample_rate:, 
+            sample_rate:,
             decim_ratio: NTSC_CLOCK_RATE / sample_rate,
             filters: [
                 Filter::hi_pass(90.0, sample_rate as! f64),

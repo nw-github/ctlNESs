@@ -1,11 +1,11 @@
 use ctlness::emu::cart::*;
 
 pub struct Nrom {
-    cart: Cartridge,
+    cart: Cart,
     one_bank: bool,
     chr_ram: ?[u8; 0x2000],
 
-    pub fn new(cart: Cartridge): This {
+    pub fn new(cart: Cart): This {
         Nrom(
             one_bank: cart.prg_rom.len() == 0x4000,
             chr_ram: if cart.chr_rom.is_empty() { [0; 0x2000] },

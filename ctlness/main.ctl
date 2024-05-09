@@ -1,7 +1,7 @@
 use sdl::*;
 use utils::*;
 use emu::*;
-use emu::cart::Cartridge;
+use emu::cart::Cart;
 use emu::apu::Channel;
 
 struct Timespec {
@@ -134,7 +134,7 @@ fn main(args: [str..]): c_int {
         return 1;
     }
 
-    guard Cartridge::new(data[..]) is ?cart else {
+    guard Cart::new(data[..]) is ?cart else {
         eprintln("invalid cartridge file");
         return 1;
     }

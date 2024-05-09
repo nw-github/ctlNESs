@@ -3,7 +3,7 @@ use cpu::*;
 use ppu::*;
 use apu::*;
 use mapper::*;
-use cart::Cartridge;
+use cart::Cart;
 
 pub union JoystickBtn {
     A,
@@ -80,7 +80,7 @@ pub struct Nes {
     cycle: u64 = 0,
     audio: [f64],
 
-    pub fn new(ipt: Input, cart: Cartridge, prg_ram: ?[u8..]): Nes {
+    pub fn new(ipt: Input, cart: Cart, prg_ram: ?[u8..]): Nes {
         let irq_pending = std::alloc::new(false);
         Nes(
             cpu: Cpu::new(CpuBus::new(

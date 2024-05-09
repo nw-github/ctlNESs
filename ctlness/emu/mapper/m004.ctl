@@ -9,7 +9,7 @@ struct Control {
 }
 
 pub struct Mmc3 {
-    cart: Cartridge,
+    cart: Cart,
     irq_pending: *mut bool,
 
     ctrl: Control = Control(),
@@ -26,7 +26,7 @@ pub struct Mmc3 {
 
     mirroring: Mirroring = Mirroring::Horizontal,
 
-    pub fn new(cart: Cartridge, irq_pending: *mut bool): This {
+    pub fn new(cart: Cart, irq_pending: *mut bool): This {
         mut chr_banks = [cart.chr_rom.len() - 0x400; 8];
         chr_banks[0] = cart.chr_rom.len() - 0x800;
         chr_banks[3] = cart.chr_rom.len() - 0x800;

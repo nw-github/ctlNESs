@@ -1,13 +1,13 @@
 use ctlness::emu::cart::*;
 
 pub struct Mmc2 {
-    cart: Cartridge,
+    cart: Cart,
     mirroring: Mirroring,
     prg_bank: uint = 0,
     chr_banks: [uint; 4] = [0; 4],
     latch: [bool; 2] = [true; 2],
 
-    pub fn new(cart: Cartridge): This {
+    pub fn new(cart: Cart): This {
         Mmc2(mirroring: cart.mirroring, cart:)
     }
 
