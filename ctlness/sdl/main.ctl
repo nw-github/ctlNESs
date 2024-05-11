@@ -71,8 +71,8 @@ pub struct KeyEvent {
 
     fn from_raw(event: SDL_KeyboardEvent): This {
         KeyEvent(
-            timestamp: event.timestamp, 
-            window_id: event.windowID, 
+            timestamp: event.timestamp,
+            window_id: event.windowID,
             state: event.state,
             repeat: event.repeat != 0,
             scancode: event.keysym.scancode,

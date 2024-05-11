@@ -92,10 +92,7 @@ pub struct Ppu {
         match this.state {
             State::PreRender => {
                 let rendering_on = this.mask.show_bg() and this.mask.show_sprites();
-                if this.cycle == 1 {
-                    this.vblank = false;
-                    this.spr_zero_hit = false;
-                } else if this.cycle == HPIXELS as! u16 + 2 and rendering_on {
+                if this.cycle == HPIXELS as! u16 + 2 and rendering_on {
                     this.v = (this.v & !0x41f) | (this.t & 0x41f);
                 } else if this.cycle is 281..=304 and rendering_on {
                     this.v = (this.v & !0x7be0) | (this.t & 0x7be0);
@@ -135,6 +132,8 @@ pub struct Ppu {
                     this.state = State::PreRender;
                     this.scanline = 0;
                     this.even_frame = !this.even_frame;
+                    this.vblank = false;
+                    this.spr_zero_hit = false;
                 }
             }
         }

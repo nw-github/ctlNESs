@@ -139,7 +139,7 @@ pub struct Nes {
         result is PpuResult::Draw
     }
 
-    pub fn toggle_channel_mute(mut this, channel: apu::Channel): bool {
+    pub fn toggle_channel_mute(mut this, channel: Channel): bool {
         this.cpu.bus.apu.toggle_channel_mute(channel)
     }
 }

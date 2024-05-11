@@ -23,7 +23,7 @@ struct Timespec {
 
     pub fn now(): This {
         //         extern fn clock_gettime(clockid: c_int, tp: *mut Timespec): c_int;
-        // 
+        //
         //         mut tp = Timespec(tv_sec: 0, tv_nsec: 0);
         //         clock_gettime(1, &mut tp);
         //         tp
@@ -271,9 +271,11 @@ fn main(args: [str..]): c_int {
         }
 
         time += clock.restart().as_seconds();
-        if time >= 1.0 / 60.0 {
+
+        let frametime = 1.0 / 60.0 / (modify_speed.then_some(speed) ?? 1.0);
+        if time >= frametime {
             nes_frame++;
-            time -= 1.0 / 60.0;
+            time -= frametime;
             while !nes.cycle() {}
 
             mixer.process(audio.buffer(), nes.audio_buffer(), null);

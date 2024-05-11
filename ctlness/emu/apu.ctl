@@ -369,7 +369,7 @@ struct Pulse {
     }
 
     pub fn output(this): u8 {
-        guard DUTY_TABLE[this.duty][this.duty_val] 
+        guard DUTY_TABLE[this.duty][this.duty_val]
             and this.tmr.val >= 8
             and this.tmr.reload <= 0x7ff
             and this.enabled
@@ -418,7 +418,7 @@ struct Triangle {
 
     pub fn output(this): u8 {
         guard this.enabled
-            and this.len_count.val != 0 
+            and this.len_count.val != 0
             and this.lin_count.val != 0
             and !this.muted
         else {
@@ -447,9 +447,9 @@ struct Noise {
     }
 
     pub fn output(this): u8 {
-        guard this.enabled 
-            and this.len_count.val != 0 
-            and this.shift_reg & 1 == 0 
+        guard this.enabled
+            and this.len_count.val != 0
+            and this.shift_reg & 1 == 0
             and !this.muted
         else {
             return 0;
