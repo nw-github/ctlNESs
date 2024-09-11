@@ -106,7 +106,7 @@ pub struct Flags {
     }
 
     impl std::fmt::Format {
-        fn format<F: std::fmt::Formatter>(this, f: *mut F) {
+        fn fmt<F: std::fmt::Formatter>(this, f: *mut F) {
             f.write_str(if this.negative() { "N" } else { "-" });
             f.write_str(if this.overflow() { "V" } else { "-" });
             f.write_str(if this.decimal() { "D" } else { "-" });
@@ -686,7 +686,7 @@ pub struct Cpu {
     // -------------
 
     impl std::fmt::Format {
-        fn format<F: std::fmt::Formatter>(this, f: *mut F) {
+        fn fmt<F: std::fmt::Formatter>(this, f: *mut F) {
             use super::debugger::*;
 
             fn hex(n: u8, buf: *mut [u8; 2]): str {
@@ -724,7 +724,7 @@ pub struct Cpu {
                     start -= 9;
                     ""
                 },
-            }).format(f);
+            }).fmt(f);
 
             f.write_str(" ".repeat(1 + 40 - 40u.min(f.written().len() - start)));
             f.write_str("; A: \x1b[31m{

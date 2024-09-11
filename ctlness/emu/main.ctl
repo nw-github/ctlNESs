@@ -32,28 +32,28 @@ pub struct Input {
     }
 
     pub fn press(mut this, btn: JoystickBtn, controller: u1) {
-        this.data[controller] |= (1 << btn as u8);
-        this.real[controller] |= (1 << btn as u8);
+        this.data[controller] |= (1 << btn as u32);
+        this.real[controller] |= (1 << btn as u32);
         if !(this.mode is InputMode::AllowOpposing) {
             this.data[controller] &= !(1 << match btn {
-                JoystickBtn::Left => JoystickBtn::Right as u8,
-                JoystickBtn::Right => JoystickBtn::Left as u8,
-                JoystickBtn::Up => JoystickBtn::Down as u8,
-                JoystickBtn::Down => JoystickBtn::Up as u8,
+                JoystickBtn::Left => JoystickBtn::Right as u32,
+                JoystickBtn::Right => JoystickBtn::Left as u32,
+                JoystickBtn::Up => JoystickBtn::Down as u32,
+                JoystickBtn::Down => JoystickBtn::Up as u32,
                 _ => return,
             });
         }
     }
 
     pub fn release(mut this, btn: JoystickBtn, controller: u1) {
-        this.data[controller] &= !(1 << btn as u8);
-        this.real[controller] &= !(1 << btn as u8);
+        this.data[controller] &= !(1 << btn as u32);
+        this.real[controller] &= !(1 << btn as u32);
         if this.mode is InputMode::Keyboard {
             this.data[controller] |= this.real[controller] & (1 << match btn {
-                JoystickBtn::Left => JoystickBtn::Right as u8,
-                JoystickBtn::Right => JoystickBtn::Left as u8,
-                JoystickBtn::Up => JoystickBtn::Down as u8,
-                JoystickBtn::Down => JoystickBtn::Up as u8,
+                JoystickBtn::Left => JoystickBtn::Right as u32,
+                JoystickBtn::Right => JoystickBtn::Left as u32,
+                JoystickBtn::Up => JoystickBtn::Down as u32,
+                JoystickBtn::Down => JoystickBtn::Up as u32,
                 _ => return,
             });
         }
@@ -97,7 +97,7 @@ pub struct Nes {
                 }),
             ),
             irq_pending:,
-            audio: @[0.0; (NTSC_CLOCK_RATE * 0.02) as! uint],
+            audio: @[0.0; (NTSC_CLOCK_RATE * 0.02) as uint],
         )
     }
 

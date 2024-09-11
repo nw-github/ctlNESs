@@ -187,7 +187,7 @@ pub struct Window {
 
         let dst = unsafe std::span::SpanMut::new(
             dst as *raw u32,
-            (pitch / 4 * this.height) as uint,
+            (pitch / 4 * this.height) as! uint,
         );
         let min = dst.len().min(src.len());
         dst[..min] = src[..min];
@@ -273,7 +273,7 @@ pub struct Audio {
 
     fn sdl_callback(user_data: ?*raw c_void, samples: *raw u8, len: c_int) {
         let self = unsafe user_data! as *mut Audio;
-        let samples = unsafe std::span::SpanMut::new(samples as *raw f32, len as uint / 4);
+        let samples = unsafe std::span::SpanMut::new(samples as *raw f32, len as! uint / 4);
         for sample in samples.iter_mut() {
             *sample = self.buf.pop() ?? 0.0;
         }

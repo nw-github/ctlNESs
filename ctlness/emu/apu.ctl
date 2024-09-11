@@ -440,7 +440,7 @@ struct Noise {
 
     pub fn clock(mut this) {
         if this.tmr.clock() {
-            let bit = if this.mode { 6 } else { 1 };
+            let bit = if this.mode { 6u32 } else { 1 };
             let feedback = (this.shift_reg & 1) ^ ((this.shift_reg >> bit) & 1);
             this.shift_reg = (this.shift_reg >> 1) | (feedback << 14);
         }
@@ -545,7 +545,7 @@ struct Dmc {
 static PULSE_TABLE: [f64; 31] = {
     mut table = [0.0; 31];
     for (i, v) in table[..].iter_mut().enumerate() {
-        *v = 95.52 / (8128.0 / i as! f64 + 100.0);
+        *v = 95.52 / (8128.0 / i as f64 + 100.0);
     }
     table
 };
@@ -553,7 +553,7 @@ static PULSE_TABLE: [f64; 31] = {
 static TND_TABLE: [f64; 203] = {
     mut table = [0.0; 203];
     for (i, v) in table[..].iter_mut().enumerate() {
-        *v = 163.67 / (24329.0 / i as! f64 + 100.0);
+        *v = 163.67 / (24329.0 / i as f64 + 100.0);
     }
     table
 };

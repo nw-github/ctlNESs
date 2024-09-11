@@ -31,15 +31,15 @@ struct Timespec {
     }
 
     pub fn as_nanos(this): u64 {
-        this.tv_nsec as u64 + this.tv_sec as u64 * 1000000000
+        this.tv_nsec as! u64 + this.tv_sec as! u64 * 1000000000
     }
 
     pub fn as_millis(this): u64 {
-        this.tv_nsec as u64 / 1000000 + this.tv_sec as u64 * 1000
+        this.tv_nsec as! u64 / 1000000 + this.tv_sec as! u64 * 1000
     }
 
     pub fn as_seconds(this): f64 {
-        this.tv_sec as! f64 + (this.tv_nsec as! f64 / 1000000000.0)
+        this.tv_sec as f64 + (this.tv_nsec as f64 / 1000000000.0)
     }
 
     pub fn from_millis(ms: u64): This {
@@ -169,7 +169,7 @@ fn main(args: [str..]): c_int {
     defer wnd.deinit();
 
     audio.unpause();
-    mut mixer = audio::Mixer::new(SAMPLE_RATE as! f64);
+    mut mixer = audio::Mixer::new(SAMPLE_RATE as f64);
 
     mut fps_clock = Clock::new();
     mut fps_history = [60.0; 20][..];
@@ -189,7 +189,7 @@ fn main(args: [str..]): c_int {
             for v in fps_history.iter() {
                 fps += *v;
             }
-            let fps = fps / fps_history.len() as! f64;
+            let fps = fps / fps_history.len() as f64;
             wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
         }
 

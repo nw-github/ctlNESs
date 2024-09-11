@@ -221,7 +221,7 @@ pub struct Ppu {
             let palette = if 
                 (!bg_opaque and spr_opaque) or (bg_opaque and spr_opaque and spr_foreground)
             {
-                spr_color                
+                spr_color
             } else if !bg_opaque and !spr_opaque {
                 0
             } else {
