@@ -1,11 +1,14 @@
 use ctlness::emu::cart::*;
 
-struct Control {
-    val: u8 = 0,
+packed struct Control {
+    target_reg: u3 = 0,
+    unused: u3 = 0,
+    prg_inversion: bool = false,
+    chr_inversion: bool = false,
 
-    pub fn target_reg(this): u3 { (this.val & 0b111) as! u3 }
-    pub fn prg_inversion(this): bool { this.val & (1 << 6) != 0 }
-    pub fn chr_inversion(this): bool { this.val & (1 << 7) != 0 }
+    pub fn from_u8(val: u8): This {
+        unsafe std::mem::transmute(val)
+    }
 }
 
 pub struct Mmc3 {
@@ -72,11 +75,11 @@ pub struct Mmc3 {
             match addr {
                 ..=0x9fff => {
                     guard addr & 1 != 0 else {
-                        this.ctrl = Control(val:);
+                        this.ctrl = Control::from_u8(val);
                         return;
                     }
 
-                    this.bank_regs[this.ctrl.target_reg()] = val;
+                    this.bank_regs[this.ctrl.target_reg] = val;
                     this.chr_banks = [
                         (this.bank_regs[0] & 0xfe) as uint * 0x400,
                         ((this.bank_regs[0] & 0xfe) + 1) as uint * 0x400,
@@ -87,7 +90,7 @@ pub struct Mmc3 {
                         this.bank_regs[4] as uint * 0x400,
                         this.bank_regs[5] as uint * 0x400,
                     ];
-                    if this.ctrl.chr_inversion() {
+                    if this.ctrl.chr_inversion {
                         std::mem::swap(&mut this.chr_banks[0], &mut this.chr_banks[4]);
                         std::mem::swap(&mut this.chr_banks[1], &mut this.chr_banks[5]);
                         std::mem::swap(&mut this.chr_banks[2], &mut this.chr_banks[6]);
@@ -99,7 +102,7 @@ pub struct Mmc3 {
                         this.cart.prg_rom.len() - 0x4000,
                         this.cart.prg_rom.len() - 0x2000,
                     ];
-                    if this.ctrl.prg_inversion() {
+                    if this.ctrl.prg_inversion {
                         std::mem::swap(&mut this.prg_banks[0], &mut this.prg_banks[2]);
                     }
                 },
@@ -109,12 +112,12 @@ pub struct Mmc3 {
                         return;
                     }
 
-                    this.mirroring = if this.cart.mirroring is Mirroring::FourScreen {
-                        Mirroring::FourScreen
+                    this.mirroring = if this.cart.mirroring is :FourScreen {
+                        :FourScreen
                     } else if val & 0x1 != 0 {
-                        Mirroring::Horizontal
+                        :Horizontal
                     } else {
-                        Mirroring::Vertical
+                        :Vertical
                     };
                 },
                 ..=0xdfff => {

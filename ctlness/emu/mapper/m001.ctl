@@ -1,19 +1,12 @@
 use ctlness::emu::cart::*;
 
-struct Control {
-    val: u8 = 0b01100,
+packed struct Control {
+    chr_mode: u1 = 0,
+    prg_mode: u2 = 0b10,
+    mirroring: u2 = 0b01,
 
-    pub fn chr_mode(this): u1 { ((this.val >> 4) & 0x1) as! u1 }
-
-    pub fn prg_mode(this): u2 { ((this.val >> 2) & 0x3) as! u2 }
-
-    pub fn mirroring(this): Mirroring {
-        match (this.val & 0x3) as! u2 {
-            0 => Mirroring::OneScreenA,
-            1 => Mirroring::OneScreenB,
-            2 => Mirroring::Vertical,
-            3 => Mirroring::Horizontal,
-        }
+    pub fn from_u8(val: u8): This {
+        unsafe std::mem::transmute(val)
     }
 }
 
@@ -42,7 +35,7 @@ pub struct Mmc1 {
     }
 
     fn update_prg_banks(mut this) {
-        match this.ctrl.prg_mode() {
+        match this.ctrl.prg_mode {
             0..=1 => {
                 this.prg_bank0 = 0x4000 * (this.prg & !1) as uint;
                 this.prg_bank1 = this.prg_bank0 + 0x4000;
@@ -99,10 +92,10 @@ pub struct Mmc1 {
 
             match addr {
                 ..=0x9fff => {
-                    this.ctrl = Control(val: this.d0);
+                    this.ctrl = Control::from_u8(this.d0);
                     this.update_prg_banks();
 
-                    if this.ctrl.chr_mode() == 0 {
+                    if this.ctrl.chr_mode == 0 {
                         this.chr_bank0 = 0x1000 * (this.chr0 | 1) as uint;
                         this.chr_bank1 = this.chr_bank0 + 0x1000;
                     } else {
@@ -112,7 +105,7 @@ pub struct Mmc1 {
                 }
                 ..=0xbfff => {
                     this.chr0 = this.d0;
-                    if this.ctrl.chr_mode() == 0 {
+                    if this.ctrl.chr_mode == 0 {
                         this.chr_bank0 = 0x1000 * (this.chr0 & 0x1e) as uint;
                         this.chr_bank1 = this.chr_bank0 + 0x1000;
                     } else {
@@ -121,7 +114,7 @@ pub struct Mmc1 {
                 }
                 ..=0xdfff => {
                     this.chr1 = this.d0;
-                    if this.ctrl.chr_mode() == 1 {
+                    if this.ctrl.chr_mode == 1 {
                         this.chr_bank1 = 0x1000 * this.chr1 as uint;
                     }
                 }
@@ -136,7 +129,12 @@ pub struct Mmc1 {
         }
 
         fn mirroring(this): Mirroring {
-            this.ctrl.mirroring()
+            match this.ctrl.mirroring {
+                0 => :OneScreenA,
+                1 => :OneScreenB,
+                2 => :Vertical,
+                3 => :Horizontal,
+            }
         }
 
         fn reset(mut this) {

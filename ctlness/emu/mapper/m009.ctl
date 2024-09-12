@@ -14,9 +14,7 @@ pub struct Mmc2 {
     impl super::Mapper {
         fn read_chr(mut this, addr: u16): u8 {
             let val = this.peek_chr(addr);
-            if addr == 0x0fd8 or addr == 0x0fe8 
-                or addr is 0x1fd8..=0x1fdf or addr is 0x1fe8..=0x1fef
-            {
+            if addr is 0x0fd8 | 0x0fe8 | 0x1fd8..=0x1fdf | 0x1fe8..=0x1fef {
                 this.latch[addr >> 12] = (addr >> 4) & 0xff == 0xfe;
             }
 
@@ -46,11 +44,7 @@ pub struct Mmc2 {
                     this.chr_banks[(addr - 0xb000) >> 12] = (val & 0x1f) as uint * 0x1000;
                 }
                 0xf000..=0xffff => {
-                    this.mirroring = if val & 1 == 0 {
-                        Mirroring::Vertical
-                    } else {
-                        Mirroring::Horizontal
-                    };
+                    this.mirroring = if val & 1 == 0 { :Vertical } else { :Horizontal };
                 }
                 _ => {}
             }

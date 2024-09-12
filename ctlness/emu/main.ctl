@@ -1,8 +1,6 @@
 use super::sdl::Color;
-use cpu::*;
-use ppu::*;
-use apu::*;
-use mapper::*;
+use cpu::Cpu;
+use cpu::CpuBus;
 use cart::Cart;
 
 pub union JoystickBtn {
@@ -80,13 +78,15 @@ pub struct Nes {
     cycle: u64 = 0,
     audio: [f64],
 
-    pub fn new(ipt: Input, cart: Cart, prg_ram: ?[u8..]): Nes {
+    pub fn new(ipt_mode: InputMode, cart: Cart, prg_ram: ?[u8..]): Nes {
+        use mapper::*;
+
         let irq_pending = std::alloc::new(false);
         Nes(
             cpu: Cpu::new(CpuBus::new(
-                irq_pending:,
-                prg_ram:,
-                ipt,
+                pirq: irq_pending,
+                sram: prg_ram,
+                Input::new(ipt_mode),
                 match cart.mapper {
                     0 => std::alloc::new(m000::Nrom::new(cart)),
                     1 => std::alloc::new(m001::Mmc1::new(cart)),
@@ -121,7 +121,7 @@ pub struct Nes {
 
     pub fn cycle(mut this): bool {
         let result = this.cpu.bus.ppu.step();
-        if result is PpuResult::VblankNmi {
+        if result is :VblankNmi {
             this.cpu.nmi_pending = true;
         }
 
@@ -136,10 +136,10 @@ pub struct Nes {
         }
 
         this.cycle++;
-        result is PpuResult::Draw
+        result is :Draw
     }
 
-    pub fn toggle_channel_mute(mut this, channel: Channel): bool {
+    pub fn toggle_channel_mute(mut this, channel: apu::Channel): bool {
         this.cpu.bus.apu.toggle_channel_mute(channel)
     }
 }

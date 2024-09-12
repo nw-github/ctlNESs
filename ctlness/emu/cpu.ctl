@@ -1,133 +1,72 @@
 use super::ppu::Ppu;
-use super::apu::*;
+use super::apu::Apu;
 use super::mapper::Mapper;
 use super::Input;
 
-pub union Flag {
-    Carry,
-    Zero,
-    IntDisable,
-    Decimal,
-    Break,
-    Unused,
-    Overflow,
-    Negative,
-}
+pub union Load { Imm, Zp, Zpx, Zpy, Abs, Abx, Aby, Izx, Izy }
+pub union Store { Zp, Zpx, Zpy, Abs, Abx, Aby, Izx, Izy }
+pub union Operation { Or, And, Xor, Adc, Sbc }
+pub union IncLoad { Zp, Zpx, Abs, Abx }
+pub union Shift { Asl, Lsr, Rol, Ror }
+pub union Reg { A, X, Y, P, S }
+pub union Flag { Carry, Zero, IntDisable, Decimal, Break, Unused, Overflow, Negative }
 
-pub union Load {
-    Imm,
-    Zp,
-    Zpx,
-    Zpy,
-    Abs,
-    Abx,
-    Aby,
-    Izx,
-    Izy,
-}
-
-pub union Store {
-    Zp,
-    Zpx,
-    Zpy,
-    Abs,
-    Abx,
-    Aby,
-    Izx,
-    Izy,
-}
-
-pub union Operation {
-    Or,
-    And,
-    Xor,
-    Adc,
-    Sbc,
-}
-
-pub union IncLoad {
-    Zp,
-    Zpx,
-    Abs,
-    Abx,
-}
-
-pub union Shift {
-    Asl,
-    Lsr,
-    Rol,
-    Ror,
-}
-
-pub union Reg {
-    A,
-    X,
-    Y,
-    P,
-    S,
-}
-
-pub struct Flags {
-    val: u8,
-
-    pub fn carry(this): bool { this.get(Flag::Carry) }
-    pub fn set_carry(mut this, val: bool) { this.set(Flag::Carry, val) }
-
-    pub fn zero(this): bool { this.get(Flag::Zero) }
-    pub fn set_zero(mut this, val: bool) { this.set(Flag::Zero, val) }
-
-    pub fn int_disable(this): bool { this.get(Flag::IntDisable) }
-    pub fn set_int_disable(mut this, val: bool) { this.set(Flag::IntDisable, val) }
-
-    pub fn decimal(this): bool { this.get(Flag::Decimal) }
-    pub fn set_decimal(mut this, val: bool) { this.set(Flag::Decimal, val) }
-
-    pub fn overflow(this): bool { this.get(Flag::Overflow) }
-    pub fn set_overflow(mut this, val: bool) { this.set(Flag::Overflow, val) }
-
-    pub fn negative(this): bool { this.get(Flag::Negative) }
-    pub fn set_negative(mut this, val: bool) { this.set(Flag::Negative, val) }
+packed struct Flags {
+    carry: bool = false,
+    zero: bool = false,
+    int_disable: bool = false,
+    decimal: bool = false,
+    brk: bool = false,
+    unused: bool = false,
+    overflow: bool = false,
+    negative: bool = false,
 
     #(inline(always))
-    pub fn get(this, bit: Flag): bool { (this.val >> bit as u8) & 1 != 0 }
+    pub fn get(my this, bit: Flag): bool {
+        (this.into_u8() >> bit as u8) & 1 != 0
+    }
 
     #(inline(always))
     pub fn set(mut this, bit: Flag, val: bool) {
         if val {
-            this.val |= (1 << bit as u8);
+            *this.as_u8_mut() |= (1 << bit as u8);
         } else {
-            this.val &= !(1 << bit as u8);
+            *this.as_u8_mut() &= !(1 << bit as u8);
         }
     }
 
+    pub fn into_u8(my this): u8 {
+        unsafe std::mem::transmute(this)
+    }
+
+    pub fn as_u8_mut(mut this): *mut u8 {
+        unsafe this as *mut u8
+    }
+
     pub fn set_zn(mut this, val: u8) {
-        this.set_negative(val & 0x80 != 0);
-        this.set_zero(val == 0);
+        this.negative = val & 0x80 != 0;
+        this.zero = val == 0;
     }
 
     impl std::fmt::Format {
         fn fmt<F: std::fmt::Formatter>(this, f: *mut F) {
-            f.write_str(if this.negative() { "N" } else { "-" });
-            f.write_str(if this.overflow() { "V" } else { "-" });
-            f.write_str(if this.decimal() { "D" } else { "-" });
-            f.write_str(if this.int_disable() { "I" } else { "-" });
-            f.write_str(if this.zero() { "Z" } else { "-" });
-            f.write_str(if this.carry() { "C" } else { "-" });
+            f.write_str(if this.negative { "N" } else { "-" });
+            f.write_str(if this.overflow { "V" } else { "-" });
+            f.write_str(if this.decimal { "D" } else { "-" });
+            f.write_str(if this.int_disable { "I" } else { "-" });
+            f.write_str(if this.zero { "Z" } else { "-" });
+            f.write_str(if this.carry { "C" } else { "-" });
         }
     }
 }
 
-union Interrupt {
-    Irq,
-    Nmi,
-    Brk,
-}
+union Interrupt { Irq, Nmi, Brk }
 
 pub struct Cpu {
     a: u8 = 0,
     x: u8 = 0,
     y: u8 = 0,
-    p: Flags = Flags(val: 0x34),
+    p: Flags = Flags(int_disable: true, brk: true, overflow: true),
     s: u8 = 0xfd,
     pc: u16,
     pub bus: CpuBus,
@@ -327,24 +266,21 @@ pub struct Cpu {
     pub fn reset(mut this) {
         this.pc = this.bus.read_u16(0xfffc);
         this.s -= 3;
-        this.p.set_int_disable(true);
+        this.p.int_disable = true;
     }
 
     // ------------
 
     fn interrupt(mut this, typ: Interrupt) {
-        guard !this.p.int_disable() or typ is Interrupt::Nmi else {
+        guard !this.p.int_disable or typ is :Nmi else {
             return;
         }
 
         this.cycles += 6; // 7
-        let vector = this.bus.read_u16(match typ {
-            Interrupt::Nmi => 0xfffa,
-            _ => 0xfffe,
-        });
+        let vector = this.bus.read_u16(if typ is :Nmi { 0xfffa } else { 0xfffe });
         this.push_u16(this.pc);
-        this.push_flags(interrupt: !(typ is Interrupt::Brk));
-        this.p.set_int_disable(true);
+        this.push_flags(interrupt: typ is :Nmi | :Irq);
+        this.p.int_disable = true;
         this.pc = vector;
     }
 
@@ -369,8 +305,10 @@ pub struct Cpu {
     }
 
     fn push_flags(mut this, kw interrupt: bool) {
-        let p = this.p.val & !(1 << Flag::Break as u8);
-        this.push(p | (!interrupt as u8 << Flag::Break as u8) | (1 << Flag::Unused as u8));
+        mut p = this.p;
+        p.brk = !interrupt;
+        p.unused = true;
+        this.push(p.into_u8());
     }
 
     fn pop(mut this): u8 {
@@ -461,10 +399,10 @@ pub struct Cpu {
         // decimal mode is disabled on the NES, so ignore it here
 
         let res = lhs as u16 + rhs as u16 + carry as u16;
-        this.p.set_carry(res > 0xff);
+        this.p.carry = res > 0xff;
         let res = (res & 0xff) as! u8;
         if overflow {
-            this.p.set_overflow((res ^ lhs) & (res ^ rhs) & 0x80 != 0);
+            this.p.overflow = (res ^ lhs) & (res ^ rhs) & 0x80 != 0;
         }
         res
     }
@@ -475,7 +413,7 @@ pub struct Cpu {
             Reg::X => &mut this.x,
             Reg::Y => &mut this.y,
             Reg::S => &mut this.s,
-            Reg::P => &mut this.p.val,
+            Reg::P => this.p.as_u8_mut(),
         }
     }
 
@@ -540,11 +478,11 @@ pub struct Cpu {
     fn arithmetic(mut this, load: Load, op: Operation) {
         let val = this.help_load(load);
         this.a = match op {
-            Operation::Or  => this.a | val,
-            Operation::And => this.a & val,
-            Operation::Xor => this.a ^ val,
-            Operation::Adc => this.add(this.a, val, carry: this.p.carry(), overflow: true),
-            Operation::Sbc => this.add(this.a, !val, carry: this.p.carry(), overflow: true),
+            :Or  => this.a | val,
+            :And => this.a & val,
+            :Xor => this.a ^ val,
+            :Adc => this.add(this.a, val, carry: this.p.carry, overflow: true),
+            :Sbc => this.add(this.a, !val, carry: this.p.carry, overflow: true),
         };
         this.p.set_zn(this.a);
     }
@@ -552,14 +490,14 @@ pub struct Cpu {
     // ASL LSR ROL ROR
     fn shift(mut this, load: ?IncLoad, typ: Shift) {
         fn help_shift(self: *mut Cpu, val: u8, shift: Shift): u8 {
-            let carry = self.p.carry() as u8;
-            let bit   = if shift is Shift::Ror or shift is Shift::Lsr { 1u8 } else { 1 << 7 };
-            self.p.set_carry(val & bit != 0);
+            let carry = self.p.carry as u8;
+            let bit   = if shift is :Ror | :Lsr { 1u8 } else { 1 << 7 };
+            self.p.carry = val & bit != 0;
             let val = match shift {
-                Shift::Asl => val << 1,
-                Shift::Lsr => val >> 1,
-                Shift::Rol => (val << 1) | carry,
-                Shift::Ror => (val >> 1) | (carry << 7),
+                :Asl => val << 1,
+                :Lsr => val >> 1,
+                :Rol => (val << 1) | carry,
+                :Ror => (val >> 1) | (carry << 7),
             };
             self.p.set_zn(val);
             val
@@ -635,12 +573,12 @@ pub struct Cpu {
     }
 
     fn brk(mut this) {
-        this.interrupt(Interrupt::Brk);
+        this.interrupt(:Brk);
     }
 
     fn rti(mut this) {
         this.cycles += 6;
-        this.p.val = this.pop();
+        *this.p.as_u8_mut() = this.pop();
         this.pc = this.pop_u16();
     }
 
@@ -674,9 +612,9 @@ pub struct Cpu {
             this.bus.read(this.read_u16())
         };
 
-        this.p.set_zero(val & this.a == 0);
-        this.p.set_negative(val & 0x80 != 0);
-        this.p.set_overflow(val & 0x40 != 0);
+        this.p.zero = val & this.a == 0;
+        this.p.negative = val & 0x80 != 0;
+        this.p.overflow = val & 0x40 != 0;
     }
 
     fn nop(mut this) {
@@ -746,24 +684,13 @@ pub struct CpuBus {
     poll_input: [u8; 2] = [0; 2],
     dma_flag: bool = false,
 
-    pub fn new(
-        ipt: Input, 
-        mapper: *dyn mut Mapper, 
-        irq_pending: *mut bool, 
-        prg_ram: ?[u8..] = null,
-    ): This {
-        mut bus = CpuBus(
-            ipt:,
-            mapper:,
-            ppu: Ppu::new(mapper),
-            apu: Apu::new(irq_pending),
-        );
-        let bus_prg_ram = bus.prg_ram[..];
-        if prg_ram is ?prg_ram and prg_ram.len() == bus_prg_ram.len() {
-            bus_prg_ram[..] = prg_ram;
+    pub fn new(ipt: Input, mapper: *dyn mut Mapper, pirq: *mut bool, sram: ?[u8..] = null): This {
+        mut self = CpuBus(ipt:, mapper:, ppu: Ppu::new(mapper), apu: Apu::new(pirq));
+        let prg_ram = self.prg_ram[..];
+        if sram is ?sram and sram.len() == prg_ram.len() {
+            prg_ram[..] = sram;
         }
-
-        bus
+        self
     }
 
     pub fn reset(mut this) {
@@ -785,11 +712,11 @@ pub struct CpuBus {
                 0x2007 => this.ppu.write_data(val),
                 _ => {}
             }
-            ..0x4004 => this.apu.write_reg((addr - 0x4000) as! u2, Channel::Pulse1, val),
-            ..0x4008 => this.apu.write_reg((addr - 0x4004) as! u2, Channel::Pulse2, val),
-            ..0x400c => this.apu.write_reg((addr - 0x4008) as! u2, Channel::Triangle, val),
-            ..0x4010 => this.apu.write_reg((addr - 0x400c) as! u2, Channel::Noise, val),
-            ..0x4014 => this.apu.write_reg((addr - 0x4010) as! u2, Channel::Dmc, val),
+            ..0x4004 => this.apu.write_reg((addr - 0x4000) as! u2, :Pulse1, val),
+            ..0x4008 => this.apu.write_reg((addr - 0x4004) as! u2, :Pulse2, val),
+            ..0x400c => this.apu.write_reg((addr - 0x4008) as! u2, :Triangle, val),
+            ..0x4010 => this.apu.write_reg((addr - 0x400c) as! u2, :Noise, val),
+            ..0x4014 => this.apu.write_reg((addr - 0x4010) as! u2, :Dmc, val),
             0x4014 => {
                 for i in 0u8..=255 {
                     this.ppu.write_oam_dma(i, this.read((val as u16 << 8).wrapping_add(i as u16)));

@@ -7,29 +7,35 @@ pub const VPIXELS: uint = 240;
 
 const SCANLINE_END_CYCLE: u16 = 340;
 
-struct Ctrl {
-    val: u8,
+packed struct Ctrl {
+    nametable_select: u2 = 0,
+    inc: bool = false,
+    spr_tile_addr: bool = false,
+    bg_tile_addr: bool = false,
+    long_sprites: bool = false,
+    master_slave: bool = false,
+    nmi_enable: bool = false,
 
-    pub fn nmi_enable(this): bool { this.val & (1 << 7) != 0 }
-    pub fn master_slave(this): bool { this.val & (1 << 6) != 0 }
-    pub fn long_sprites(this): bool { this.val & (1 << 5) != 0 }
-    pub fn bg_tile_addr(this): u16 { (this.val & (1 << 4) != 0) as u16 << 12 }
-    pub fn sprite_tile_addr(this): u16 { (this.val & (1 << 3) != 0) as u16 << 12 }
-    pub fn increment(this): u16 { if this.val & (1 << 2) != 0 { 32 } else { 1 } }
-    pub fn nametable_select(this): u8 { this.val & 0b11 }
+    pub fn increment(this): u16 { if this.inc { 32 } else { 1 } }
+
+    pub fn from_u8(val: u8): This {
+        unsafe std::mem::transmute(val)
+    }
 }
 
-struct Mask {
-    val: u8,
+packed struct Mask {
+    greyscale: bool = false,
+    show_bg_l8: bool = false,
+    show_sprites_l8: bool = false,
+    show_bg: bool = true,
+    show_sprites: bool = true,
+    emphasize_red: bool = false,
+    emphasize_green: bool = false,
+    emphasize_blue: bool = false,
 
-    pub fn emphasize_blue(this): bool { this.val & (1 << 7) != 0 }
-    pub fn emphasize_green(this): bool { this.val & (1 << 6) != 0 }
-    pub fn emphasize_red(this): bool { this.val & (1 << 5) != 0 }
-    pub fn show_sprites(this): bool { this.val & (1 << 4) != 0 }
-    pub fn show_bg(this): bool { this.val & (1 << 3) != 0 }
-    pub fn show_sprites_l8(this): bool { this.val & (1 << 2) != 0 }
-    pub fn show_bg_l8(this): bool { this.val & (1 << 1) != 0 }
-    pub fn greyscale(this): bool { this.val & 1 != 0 }
+    pub fn from_u8(val: u8): This {
+        unsafe std::mem::transmute(val)
+    }
 }
 
 union State {
@@ -45,17 +51,24 @@ pub union PpuResult {
     None,
 }
 
+struct Sprite {
+    y: u8 = 0,
+    tile: u8 = 0,
+    attr: u8 = 0,
+    x: u8 = 0,
+}
+
 pub struct Ppu {
     pub buf: [mut u32..] = @[0u32; HPIXELS * VPIXELS][..],
 
     mapper: *dyn mut Mapper,
     palette: [u8; 0x20] = [0; 0x20],
     ram: [u8; 0x800] = [0; 0x800],
-    oam: [u8; 64 * 4] = [0; 64 * 4],
+    oam: [Sprite; 64] = [Sprite(); 64],
     sprites: [u8; 8] = [0; 8],
     sprite_count: uint = 0,
 
-    state: State = State::PreRender,
+    state: State = :PreRender,
     cycle: u16 = 0,
     scanline: u16 = 0,
     even_frame: bool = true,
@@ -63,8 +76,8 @@ pub struct Ppu {
     spr_zero_hit: bool = false,
     spr_overflow: bool = false,
 
-    ctrl: Ctrl = Ctrl(val: 0),
-    mask: Mask = Mask(val: 0x18),
+    ctrl: Ctrl = Ctrl(),
+    mask: Mask = Mask(),
     v: u16 = 0,      // scroll position while rendering, vram addr otherwise
     t: u16 = 0,      // starting coarse x scroll and starting y scroll while rendering,
                      // scroll/tmp vram addr otherwise
@@ -82,16 +95,16 @@ pub struct Ppu {
         this.even_frame = true;
         this.scanline = 0;
         this.data_buf = 0;
-        this.ctrl.val = 0;
-        this.mask.val = 0;
+        this.ctrl = Ctrl::from_u8(0);
+        this.mask = Mask::from_u8(0);
         this.w = false;
     }
 
     pub fn step(mut this): PpuResult {
         mut result = PpuResult::None;
         match this.state {
-            State::PreRender => {
-                let rendering_on = this.mask.show_bg() and this.mask.show_sprites();
+            :PreRender => {
+                let rendering_on = this.mask.show_bg and this.mask.show_sprites;
                 if this.cycle == HPIXELS as! u16 + 2 and rendering_on {
                     this.v = (this.v & !0x41f) | (this.t & 0x41f);
                 } else if this.cycle is 281..=304 and rendering_on {
@@ -99,7 +112,7 @@ pub struct Ppu {
                 }
 
                 if this.cycle >= SCANLINE_END_CYCLE - (!this.even_frame and rendering_on) as u16 {
-                    this.state = State::Render;
+                    this.state = :Render;
                     this.cycle = 0;
                     this.scanline = 0;
                 }
@@ -108,20 +121,20 @@ pub struct Ppu {
                     this.mapper.scanline();
                 }
             }
-            State::Render => this.render(),
-            State::PostRender => {
+            :Render => this.render(),
+            :PostRender => {
                 if this.cycle >= SCANLINE_END_CYCLE {
                     this.scanline++;
                     this.cycle = 0;
-                    this.state = State::VBlank;
-                    result = PpuResult::Draw;
+                    this.state = :VBlank;
+                    result = :Draw;
                 }
             }
-            State::VBlank => {
+            :VBlank => {
                 if this.cycle == 1 and this.scanline == VPIXELS as! u16 + 1 {
                     this.vblank = true;
-                    if this.ctrl.nmi_enable() {
-                        result = PpuResult::VblankNmi;
+                    if this.ctrl.nmi_enable {
+                        result = :VblankNmi;
                     }
                 }
                 if this.cycle >= SCANLINE_END_CYCLE {
@@ -129,7 +142,7 @@ pub struct Ppu {
                     this.cycle = 0;
                 }
                 if this.scanline >= 261 {
-                    this.state = State::PreRender;
+                    this.state = :PreRender;
                     this.scanline = 0;
                     this.even_frame = !this.even_frame;
                     this.vblank = false;
@@ -143,18 +156,18 @@ pub struct Ppu {
     }
 
     fn render(mut this) {
-        let show_bg = this.mask.show_bg();
-        let show_spr = this.mask.show_sprites();
-        if this.cycle > 0 and this.cycle <= HPIXELS as! u16 {
+        let show_bg = this.mask.show_bg;
+        let show_spr = this.mask.show_sprites;
+        if (0u16..=HPIXELS as! u16).contains(&this.cycle) {
             mut [bg_color, spr_color] = [0u8; 2];
             mut [bg_opaque, spr_opaque] = [false, true];
             mut spr_foreground = false;
             let [x, y] = [this.cycle - 1, this.scanline];
             if show_bg {
                 let x_fine = (this.x as u16 + x) % 8;
-                if this.mask.show_bg_l8() or x >= 8 {
+                if this.mask.show_bg_l8 or x >= 8 {
                     let tile = this.read((this.v & 0xfff) | 0x2000) as u16;
-                    let addr = (tile * 16 + ((this.v >> 12) & 0x7)) | this.ctrl.bg_tile_addr();
+                    let addr = (tile * 16 + ((this.v >> 12) & 0x7)) | (this.ctrl.bg_tile_addr as u16 << 12);
 
                     bg_color = (this.read(addr) >> (x_fine ^ 7)) & 1;
                     bg_color |= ((this.read(addr + 8) >> (x_fine ^ 7)) & 1) << 1;
@@ -175,17 +188,17 @@ pub struct Ppu {
                 }
             }
 
-            if show_spr and (this.mask.show_sprites_l8() or x >= 8) {
+            if show_spr and (this.mask.show_sprites_l8 or x >= 8) {
                 for i in this.sprites[..this.sprite_count].iter() {
-                    let spr_x = this.oam[i * 4 + 3] as u16;
+                    let {x: spr_x, y: spr_y, tile, attr} = this.oam[*i];
+                    let spr_x = spr_x as u16;
                     if x < spr_x or x - spr_x >= 8 {
                         continue;
                     }
 
-                    let spr_y   = (this.oam[i * 4] + 1) as u16;
-                    let tile    = this.oam[i * 4 + 1] as u16;
-                    let attr    = this.oam[i * 4 + 2];
-                    let len     = if this.ctrl.long_sprites() { 16u16 } else { 8 };
+                    let spr_y   = (spr_y + 1) as u16;
+                    let tile    = tile as u16;
+                    let len     = if this.ctrl.long_sprites { 16u16 } else { 8 };
                     mut x_shift = (x - spr_x) % 8;
                     mut y_offs  = (y - spr_y) % len;
                     if attr & 0x40 == 0 {
@@ -195,8 +208,8 @@ pub struct Ppu {
                         y_offs ^= len - 1;
                     }
 
-                    let addr = if !this.ctrl.long_sprites() {
-                        tile * 16 + y_offs + this.ctrl.sprite_tile_addr()
+                    let addr = if !this.ctrl.long_sprites {
+                        tile * 16 + y_offs + (this.ctrl.spr_tile_addr as u16 << 12)
                     } else {
                         y_offs = (y_offs & 7) | ((y_offs & 8) << 1);
                         ((tile >> 1) * 32 + y_offs) | ((tile & 1) << 12)
@@ -218,8 +231,8 @@ pub struct Ppu {
                 }
             }
 
-            let palette = if 
-                (!bg_opaque and spr_opaque) or (bg_opaque and spr_opaque and spr_foreground)
+            let palette = if (!bg_opaque and spr_opaque) or
+                (bg_opaque and spr_opaque and spr_foreground)
             {
                 spr_color
             } else if !bg_opaque and !spr_opaque {
@@ -262,9 +275,9 @@ pub struct Ppu {
         if this.cycle >= SCANLINE_END_CYCLE {
             this.sprite_count = 0;
 
-            let range = if this.ctrl.long_sprites() { 16u16 } else { 8 };
+            let range = if this.ctrl.long_sprites { 16u16 } else { 8 };
             for i in this.oam_addr / 4..64 {
-                let spr_y = this.oam[i * 4] as u16;
+                let spr_y = this.oam[i].y as u16;
                 if this.scanline >= spr_y and this.scanline - spr_y < range {
                     if this.sprite_count == this.sprites[..].len() {
                         this.spr_overflow = true;
@@ -280,7 +293,7 @@ pub struct Ppu {
         }
 
         if this.scanline >= VPIXELS as! u16 {
-            this.state = State::PostRender;
+            this.state = :PostRender;
         }
     }
 
@@ -300,7 +313,7 @@ pub struct Ppu {
 
     // r $2004
     pub fn read_oam(this): u8 {
-        this.oam[this.oam_addr]
+        unsafe *this.oam_ptr(this.oam_addr)
     }
 
     // r $2007
@@ -322,13 +335,13 @@ pub struct Ppu {
 
     // w $2000
     pub fn write_ctrl(mut this, val: u8) {
-        this.ctrl.val = val;
-        this.t = (this.t & !0xc00) | (this.ctrl.nametable_select() as u16 << 10);
+        this.ctrl = Ctrl::from_u8(val);
+        this.t = (this.t & !0xc00) | (this.ctrl.nametable_select as u16 << 10);
     }
 
     // w $2001
     pub fn write_mask(mut this, val: u8) {
-        this.mask.val = val;
+        this.mask = Mask::from_u8(val);
     }
 
     // w $2003
@@ -338,7 +351,7 @@ pub struct Ppu {
 
     // w $2004
     pub fn write_oam(mut this, val: u8) {
-        this.oam[this.oam_addr++] = val;
+        unsafe *this.oam_ptr(this.oam_addr++) = val;
     }
 
     // w $2005
@@ -372,7 +385,7 @@ pub struct Ppu {
 
     // w $4014
     pub fn write_oam_dma(mut this, idx: u8, val: u8) {
-        this.oam[this.oam_addr.wrapping_add(idx)] = val;
+        unsafe *this.oam_ptr(this.oam_addr.wrapping_add(idx)) = val;
     }
 
     fn read(this, addr: u16): u8 {
@@ -433,6 +446,10 @@ pub struct Ppu {
             Mirroring::OneScreenA => [0u16; 4][nametable],
             Mirroring::OneScreenB => [0x400u16; 4][nametable],
         }
+    }
+
+    fn oam_ptr(this, addr: u8): *raw u8 {
+        &raw this.oam as *raw u8 + addr
     }
 }
 

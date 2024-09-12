@@ -8,7 +8,7 @@ struct Timespec {
     tv_sec: c_long,
     tv_nsec: c_long,
 
-    pub fn -(this, rhs: *Timespec): Timespec {
+    pub fn -(this, rhs: *This): This {
         mut tv_nsec = this.tv_nsec - rhs.tv_nsec;
         mut tv_sec  = this.tv_sec - rhs.tv_sec;
         if tv_sec > 0 and tv_nsec < 0 {
@@ -149,7 +149,7 @@ fn main(args: [str..]): c_int {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
     };
-    mut nes = Nes::new(Input::new(InputMode::Keyboard), cart, save);
+    mut nes = Nes::new(InputMode::Keyboard, cart, save);
     guard Audio::new(sample_rate: SAMPLE_RATE) is ?mut audio else {
         eprintln("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
         return 1;
@@ -178,11 +178,10 @@ fn main(args: [str..]): c_int {
     mut nes_frame = 1u;
     mut time = 0.0;
     mut clock = Clock::new();
-    mut done = false;
     mut speed = 2.0;
     mut modify_speed = false;
     mut channels = [false; 5];
-    while !done {
+    @outer: loop {
         fps_history[fpsi++ % fps_history.len()] = fps_clock.restart().as_seconds();
         if nes_frame % 60 == 0 {
             mut fps = 0.0;
@@ -197,17 +196,13 @@ fn main(args: [str..]): c_int {
 
         while wnd.poll_event() is ?event {
             match event {
-                SdlEvent::Quit => {
-                    done = true;
-                    break;
-                }
-                SdlEvent::Window({event}) => {
+                :Quit => break @outer,
+                :Window({event}) => {
                     if event is WindowEvent::Close {
-                        done = true;
-                        break;
+                        break @outer;
                     }
                 }
-                SdlEvent::KeyDown(event) => {
+                :KeyDown(event) => {
                     if KEYMAP.get(&event.scancode) is ?btn {
                         nes.input().press(*btn, 0);
                         nes.input().press(*btn, 1);
@@ -216,10 +211,10 @@ fn main(args: [str..]): c_int {
                         print_channels(&channels);
                     }
                     match event.scancode {
-                        Scancode::R => {
+                        :R => {
                             if event.modifiers & (0x40 | 0x80) != 0 {
                                 nes = Nes::new(
-                                    *nes.input(),
+                                    nes.input().mode(),
                                     cart,
                                     cart.has_battery.then_some(nes.sram()),
                                 );
@@ -229,27 +224,27 @@ fn main(args: [str..]): c_int {
                                 println("executed soft reset");
                             }
                         }
-                        Scancode::Num1 => modify_speed = true,
-                        Scancode::Num2 => {
+                        :Num1 => modify_speed = true,
+                        :Num2 => {
                             speed = 0.125.max(speed / 2.0);
                             println("set speed to {speed}x");
                         }
-                        Scancode::Num3 => {
+                        :Num3 => {
                             speed = 8.0.min(speed * 2.0);
                             println("set speed to {speed}x");
                         }
-                        Scancode::Num4 => {
+                        :Num4 => {
                             match nes.input().mode() {
-                                InputMode::AllowOpposing => {
-                                    nes.input().set_mode(InputMode::Keyboard);
+                                :AllowOpposing => {
+                                    nes.input().set_mode(:Keyboard);
                                     println("set input mode to keyboard");
                                 }
-                                InputMode::Keyboard => {
-                                    nes.input().set_mode(InputMode::Nes);
+                                :Keyboard => {
+                                    nes.input().set_mode(:Nes);
                                     println("set input mode to nes");
                                 }
-                                InputMode::Nes => {
-                                    nes.input().set_mode(InputMode::AllowOpposing);
+                                :Nes => {
+                                    nes.input().set_mode(:AllowOpposing);
                                     println("set input mode to allow opposing");
                                 }
                             }
@@ -257,14 +252,12 @@ fn main(args: [str..]): c_int {
                         _ => {}
                     }
                 }
-                SdlEvent::KeyUp(event) => {
+                :KeyUp(event) => {
                     if KEYMAP.get(&event.scancode) is ?btn {
                         nes.input().release(*btn, 0);
                         nes.input().release(*btn, 1);
-                    }
-                    match event.scancode {
-                        Scancode::Num1 => modify_speed = false,
-                        _ => {}
+                    } else if event.scancode is :Num1 {
+                        modify_speed = false;
                     }
                 }
             }
