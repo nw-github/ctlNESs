@@ -30,8 +30,8 @@ pub struct Input {
     }
 
     pub fn press(mut this, btn: JoystickBtn, controller: u1) {
-        this.data[controller] |= (1 << btn as u32);
-        this.real[controller] |= (1 << btn as u32);
+        this.data[controller] |= 1 << btn as u32;
+        this.real[controller] |= 1 << btn as u32;
         if !(this.mode is InputMode::AllowOpposing) {
             this.data[controller] &= !(1 << match btn {
                 JoystickBtn::Left => JoystickBtn::Right as u32,

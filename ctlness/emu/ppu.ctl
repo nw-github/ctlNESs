@@ -440,16 +440,16 @@ pub struct Ppu {
             _ => 3,
         };
         match this.mapper.mirroring() {
-            Mirroring::Horizontal => [0u16, 0, 0x400, 0x400][nametable],
-            Mirroring::Vertical => [0u16, 0x400, 0, 0x400][nametable],
-            Mirroring::FourScreen => null,
-            Mirroring::OneScreenA => [0u16; 4][nametable],
-            Mirroring::OneScreenB => [0x400u16; 4][nametable],
+            :Horizontal => [0u16, 0, 0x400, 0x400][nametable],
+            :Vertical => [0u16, 0x400, 0, 0x400][nametable],
+            :FourScreen => null,
+            :OneScreenA => [0u16; 4][nametable],
+            :OneScreenB => [0x400u16; 4][nametable],
         }
     }
 
     fn oam_ptr(this, addr: u8): *raw u8 {
-        &raw this.oam as *raw u8 + addr
+        (&raw this.oam).cast() + addr
     }
 }
 

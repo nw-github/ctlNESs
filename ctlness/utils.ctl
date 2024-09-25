@@ -48,14 +48,14 @@ pub union SeekPos {
     End,
 }
 
-#(opaque, c_name(FILE))
+@(opaque, c_name(FILE))
 pub struct File {
     pub fn open(path: str, mode: str): ?*mut File {
-        __libc::fopen(unsafe path.as_raw() as *c_char, unsafe mode.as_raw() as *c_char)
+        unsafe __libc::fopen(path.as_raw() as *c_char, mode.as_raw() as *c_char)
     }
 
     pub fn seek(mut this, pos: SeekPos): c_int {
-        __libc::fseek(this, pos.offset as! c_long, match pos {
+        unsafe __libc::fseek(this, pos.offset as! c_long, match pos {
             SeekPos::Start => 0,
             SeekPos::Current => 1,
             SeekPos::End => 2,
@@ -63,8 +63,8 @@ pub struct File {
     }
 
     pub fn read(mut this, buf: [mut u8..]): uint {
-        __libc::fread(
-            unsafe buf.as_raw() as *mut c_void,
+        unsafe __libc::fread(
+            buf.as_raw() as *mut c_void,
             core::mem::size_of::<u8>(),
             buf.len(),
             this,
@@ -72,14 +72,14 @@ pub struct File {
     }
 
     pub fn write(mut this, buf: [u8..]): uint {
-        __libc::fwrite(unsafe buf.as_raw() as *c_void, 1, buf.len(), this)
+        unsafe __libc::fwrite(buf.as_raw() as *c_void, 1, buf.len(), this)
     }
 
     pub fn tell(mut this): c_long {
-        __libc::ftell(this)
+        unsafe __libc::ftell(this)
     }
 
     pub fn close(mut this): c_int {
-        __libc::fclose(this)
+        unsafe __libc::fclose(this)
     }
 }

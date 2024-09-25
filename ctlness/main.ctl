@@ -39,7 +39,7 @@ struct Timespec {
     }
 
     pub fn as_seconds(this): f64 {
-        this.tv_sec as f64 + (this.tv_nsec as f64 / 1000000000.0)
+        this.tv_sec as f64 + (this.tv_nsec as f64 / 1_000_000_000.0)
     }
 
     pub fn from_millis(ms: u64): This {
@@ -73,9 +73,9 @@ fn read_bytes(path: str): ?[u8] {
     let fp = File::open(path:, mode: "rb")?;
     defer fp.close();
 
-    fp.seek(SeekPos::End(offset: 0));
+    fp.seek(:End(offset: 0));
     let len = fp.tell() as! uint;
-    fp.seek(SeekPos::Start(offset: 0));
+    fp.seek(:Start(offset: 0));
     mut buf = @[0u8; len];
     if fp.read(buf[..]) != len {
         return null;
@@ -124,12 +124,35 @@ fn main(args: [str..]): c_int {
         Scancode::Num0: Channel::Dmc,
     ];
 
-    guard args.get(1) is ?path else {
-        eprintln("usage: {args[0]} <file>");
+    mut file: ?str = null;
+    mut vsync = false;
+    mut scale = 3u32;
+
+    mut i = 0u;
+    while args.get(i++) is ?arg {
+        match *arg {
+            "-v" | "--vsync" => vsync = true,
+            "-s" | "--scale" => {
+                guard args.get(i++) is ?next else {
+                    eprintln("argument -s requires a scale");
+                    return 1;
+                }
+
+                scale = u32::from_str_radix(*next, 10) ?? {
+                    eprintln("couldn't parse invalid scale '{next}'");
+                    return 1;
+                };
+            }
+            arg => file = arg,
+        }
+    }
+
+    guard file is ?path else {
+        eprintln("usage: {args[0]} [-v|--vsync] [-s|--scale SCALE] <file>");
         return 1;
     }
 
-    guard read_bytes(*path) is ?data else {
+    guard read_bytes(path) is ?data else {
         eprintln("couldn't read input file '{path}'");
         return 1;
     }
@@ -138,6 +161,7 @@ fn main(args: [str..]): c_int {
         eprintln("invalid cartridge file");
         return 1;
     }
+    eprintln(if vsync { "vsync enabled" } else { "vsync disabled" });
     eprintln("mapper: {cart.mapper}");
     eprintln("has battery: {cart.has_battery}");
     eprintln("mirroring: {cart.mirroring as u8}");
@@ -149,7 +173,7 @@ fn main(args: [str..]): c_int {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
     };
-    mut nes = Nes::new(InputMode::Keyboard, cart, save);
+    mut nes = Nes::new(InputMode::Nes, cart, save);
     guard Audio::new(sample_rate: SAMPLE_RATE) is ?mut audio else {
         eprintln("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
         return 1;
@@ -160,8 +184,8 @@ fn main(args: [str..]): c_int {
         title: NAME,
         width: ppu::HPIXELS as! u32,
         height: ppu::VPIXELS as! u32,
-        scale: 3,
-        vsync: false,
+        scale:,
+        vsync:,
     ) is ?mut wnd else {
         eprintln("Error occurred while initializing SDL Window: {sdl::get_last_error()}");
         return 1;
@@ -198,7 +222,7 @@ fn main(args: [str..]): c_int {
             match event {
                 :Quit => break @outer,
                 :Window({event}) => {
-                    if event is WindowEvent::Close {
+                    if event is :Close {
                         break @outer;
                     }
                 }

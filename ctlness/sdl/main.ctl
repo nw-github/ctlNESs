@@ -101,9 +101,9 @@ pub struct Color {
 
     pub fn rgb32(val: u32): Color {
         Color(
-            r: ((val >> 16) & 0xff) as! u8, 
-            g: ((val >> 8) & 0xff) as! u8, 
-            b: (val & 0xff) as! u8, 
+            r: ((val >> 16) & 0xff) as! u8,
+            g: ((val >> 8) & 0xff) as! u8,
+            b: (val & 0xff) as! u8,
             a: 0xff,
         )
     }
@@ -121,7 +121,7 @@ pub struct Window {
     scale:    c_int,
 
     pub fn new(kw title: str, kw width: u32, kw height: u32, kw scale: u32, kw vsync: bool): ?This {
-        guard SDL_Init(SDL_INIT_VIDEO) == 0 else {
+        guard unsafe SDL_Init(SDL_INIT_VIDEO) == 0 else {
             return null;
         }
 
@@ -129,7 +129,7 @@ pub struct Window {
         let height = height as! c_int;
         let scale = scale as! c_int;
 
-        guard SDL_CreateWindow(
+        guard unsafe SDL_CreateWindow(
             title.as_raw() as *raw c_char, // zero terminate
             x: SDL_WINDOWPOS_CENTERED,
             y: SDL_WINDOWPOS_CENTERED,
@@ -137,13 +137,15 @@ pub struct Window {
             h: height * scale,
             flags: 0,
         ) is ?window else {
-            SDL_Quit();
+            unsafe SDL_Quit();
             return null;
         }
 
         guard Window::create_renderer(window, width, height, scale, vsync) is ?mut renderer else {
-            SDL_DestroyWindow(window);
-            SDL_Quit();
+            unsafe {
+                SDL_DestroyWindow(window);
+                SDL_Quit();
+            }
             return null;
         }
 
@@ -152,36 +154,36 @@ pub struct Window {
 
     fn create_renderer(wnd: *mut SDL_Window, w: c_int, h: c_int, s: c_int, vsync: bool): ?Renderer {
         // accelerated | vsync (0x2 | 0x4)
-        guard SDL_CreateRenderer(wnd, -1, 0x2 | (vsync as u32 << 2)) is ?renderer else {
+        guard unsafe SDL_CreateRenderer(wnd, -1, 0x2 | (vsync as u32 << 2)) is ?renderer else {
             return null;
         }
 
-        guard SDL_CreateTexture(
-            renderer, 
-            SDL_PIXELFORMAT_ABGR8888, 
-            SDL_TEXTUREACCESS_STREAMING, 
-            w, 
+        guard unsafe SDL_CreateTexture(
+            renderer,
+            SDL_PIXELFORMAT_ABGR8888,
+            SDL_TEXTUREACCESS_STREAMING,
+            w,
             h,
         ) is ?texture else {
-            SDL_DestroyRenderer(renderer);
+            unsafe SDL_DestroyRenderer(renderer);
             return null;
         }
 
-        SDL_RenderSetLogicalSize(renderer, w * s, h * s);
+        unsafe SDL_RenderSetLogicalSize(renderer, w * s, h * s);
         Renderer(renderer:, texture:)
     }
 
     pub fn deinit(mut this) {
         this.renderer.deinit();
 
-        SDL_DestroyWindow(this.window);
-        SDL_Quit(); // TODO: this should be somewhere else
+        unsafe SDL_DestroyWindow(this.window);
+        unsafe SDL_Quit(); // TODO: this should be somewhere else
     }
 
     pub fn draw_scaled(mut this, src: [u32..]): bool {
         mut dst: *raw c_void;
         mut pitch = 0ic;
-        guard SDL_LockTexture(this.renderer.texture, null, &raw dst, &mut pitch) == 0 else {
+        guard unsafe SDL_LockTexture(this.renderer.texture, null, &raw dst, &mut pitch) == 0 else {
             return false;
         }
 
@@ -192,17 +194,17 @@ pub struct Window {
         let min = dst.len().min(src.len());
         dst[..min] = src[..min];
 
-        SDL_UnlockTexture(this.renderer.texture);
+        unsafe SDL_UnlockTexture(this.renderer.texture);
         true
     }
 
     pub fn set_title(mut this, title: str) {
-        SDL_SetWindowTitle(this.window, title.as_raw() as *raw c_char);
+        unsafe SDL_SetWindowTitle(this.window, title.as_raw() as *raw c_char);
     }
 
     pub fn poll_event(mut this): ?SdlEvent {
         mut event = unsafe std::mem::zeroed::<SDL_Event>();
-        if SDL_PollEvent(&mut event) == 0 {
+        if unsafe SDL_PollEvent(&mut event) == 0 {
             return null;
         }
         unsafe {
@@ -232,7 +234,7 @@ pub struct Audio {
     buf: rb::RingBuffer<f32>,
 
     pub fn new(kw sample_rate: uint, kw buf_size: uint = 1024 * 4): ?*mut This {
-        guard SDL_Init(SDL_INIT_AUDIO) == 0 else {
+        guard unsafe SDL_Init(SDL_INIT_AUDIO) == 0 else {
             return null;
         }
 
@@ -247,7 +249,7 @@ pub struct Audio {
             callback: Audio::sdl_callback,
             user_data: self as *raw c_void, // this might be a problem for the GC
         );
-        self.device = SDL_OpenAudioDevice(null, 0, &spec, null, 0);
+        self.device = unsafe SDL_OpenAudioDevice(null, 0, &spec, null, 0);
         guard self.device != 0 else {
             return null;
         }
@@ -256,15 +258,15 @@ pub struct Audio {
     }
 
     pub fn deinit(mut this) {
-        SDL_CloseAudioDevice(this.device);
+        unsafe SDL_CloseAudioDevice(this.device);
     }
 
     pub fn unpause(mut this) {
-        SDL_PauseAudioDevice(this.device, 0);
+        unsafe SDL_PauseAudioDevice(this.device, 0);
     }
 
     pub fn pause(mut this) {
-        SDL_PauseAudioDevice(this.device, 1);
+        unsafe SDL_PauseAudioDevice(this.device, 1);
     }
 
     pub fn buffer(mut this): *mut rb::RingBuffer<f32> {
@@ -285,44 +287,44 @@ struct Renderer {
     texture: *mut SDL_Texture,
 
     fn set_scale(mut this, scale: f32): bool {
-        SDL_RenderSetScale(this.renderer, scale, scale) == 0
+        unsafe SDL_RenderSetScale(this.renderer, scale, scale) == 0
     }
 
     fn set_logical_size(mut this, w: c_int, h: c_int): bool {
-        SDL_RenderSetLogicalSize(this.renderer, w, h) == 0
+        unsafe SDL_RenderSetLogicalSize(this.renderer, w, h) == 0
     }
 
     pub fn set_vsync(mut this, enabled: bool): bool {
         // SDL_GL_SetSwapInterval(enabled as c_int) == 0
-        SDL_RenderSetVSync(this.renderer, enabled as c_int) == 0
+        unsafe SDL_RenderSetVSync(this.renderer, enabled as c_int) == 0
     }
 
     pub fn set_draw_color(mut this, {r, g, b, a}: Color) {
-        SDL_SetRenderDrawColor(this.renderer, r, g, b, a);
+        unsafe SDL_SetRenderDrawColor(this.renderer, r, g, b, a);
     }
 
     pub fn draw_point(mut this, x: i32, y: i32) {
-        SDL_RenderDrawPoint(this.renderer, x as! c_int, y as! c_int);
+        unsafe SDL_RenderDrawPoint(this.renderer, x as! c_int, y as! c_int);
     }
 
     pub fn clear(mut this, color: Color) {
         this.set_draw_color(color);
-        SDL_RenderClear(this.renderer);
+        unsafe SDL_RenderClear(this.renderer);
     }
 
     pub fn present(mut this, window: *Window) {
-        SDL_RenderCopy(this.renderer, this.texture, null, &SDL_Rect(
+        unsafe SDL_RenderCopy(this.renderer, this.texture, null, &SDL_Rect(
             x: 0, 
             y: 0, 
             w: window.width * window.scale, 
             h: window.height * window.scale
         ));
-        SDL_RenderPresent(this.renderer);
+        unsafe SDL_RenderPresent(this.renderer);
     }
 
     pub fn deinit(mut this) {
-        SDL_DestroyTexture(this.texture);
-        SDL_DestroyRenderer(this.renderer);
+        unsafe SDL_DestroyTexture(this.texture);
+        unsafe SDL_DestroyRenderer(this.renderer);
     }
 }
 
@@ -331,9 +333,9 @@ pub fn get_last_error(): str {
 }
 
 pub fn delay(ms: u32) {
-    SDL_Delay(ms);
+    unsafe SDL_Delay(ms);
 }
 
 pub fn get_ticks(): u64 {
-    SDL_GetTicks64()
+    unsafe SDL_GetTicks64()
 }
