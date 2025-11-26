@@ -1,3 +1,5 @@
+use std::span::SpanMut;
+
 pub use bindings::WindowEvent;
 
 use bindings::*;
@@ -130,7 +132,7 @@ pub struct Window {
         let scale = scale as! c_int;
 
         guard unsafe SDL_CreateWindow(
-            title.as_raw() as *raw c_char, // zero terminate
+            title.as_raw().cast(), // zero terminate
             x: SDL_WINDOWPOS_CENTERED,
             y: SDL_WINDOWPOS_CENTERED,
             w: width * scale,
@@ -181,16 +183,13 @@ pub struct Window {
     }
 
     pub fn draw_scaled(mut this, src: [u32..]): bool {
-        mut dst: *raw c_void;
+        mut dst: ^mut c_void;
         mut pitch = 0ic;
-        guard unsafe SDL_LockTexture(this.renderer.texture, null, &raw dst, &mut pitch) == 0 else {
+        guard unsafe SDL_LockTexture(this.renderer.texture, null, &mut dst, &mut pitch) == 0 else {
             return false;
         }
 
-        let dst = unsafe std::span::SpanMut::new(
-            dst as *raw u32,
-            (pitch / 4 * this.height) as! uint,
-        );
+        let dst = unsafe SpanMut::new(dst.cast::<u32>(), (pitch / 4 * this.height) as! uint);
         let min = dst.len().min(src.len());
         dst[..min] = src[..min];
 
@@ -199,7 +198,7 @@ pub struct Window {
     }
 
     pub fn set_title(mut this, title: str) {
-        unsafe SDL_SetWindowTitle(this.window, title.as_raw() as *raw c_char);
+        unsafe SDL_SetWindowTitle(this.window, title.as_raw().cast());
     }
 
     pub fn poll_event(mut this): ?SdlEvent {
@@ -247,7 +246,7 @@ pub struct Audio {
             silence: 0,
             size: 0,
             callback: Audio::sdl_callback,
-            user_data: self as *raw c_void, // this might be a problem for the GC
+            user_data: self as ^mut c_void, // this might be a problem for the GC
         );
         self.device = unsafe SDL_OpenAudioDevice(null, 0, &spec, null, 0);
         guard self.device != 0 else {
@@ -273,9 +272,9 @@ pub struct Audio {
         &mut this.buf
     }
 
-    fn sdl_callback(user_data: ?*raw c_void, samples: *raw u8, len: c_int) {
+    fn sdl_callback(user_data: ?^mut c_void, samples: ^mut u8, len: c_int) {
         let self = unsafe user_data! as *mut Audio;
-        let samples = unsafe std::span::SpanMut::new(samples as *raw f32, len as! uint / 4);
+        let samples = unsafe SpanMut::new(samples.cast::<f32>(), len as! uint / 4);
         for sample in samples.iter_mut() {
             *sample = self.buf.pop() ?? 0.0;
         }

@@ -14,8 +14,8 @@ pub struct SDL_AudioSpec {
     pub samples: u16,
     pub _padding: u16 = 0,
     pub size: u32,
-    pub callback: ?fn(?*raw c_void, *raw u8, c_int),
-    pub user_data: ?*raw c_void,
+    pub callback: ?fn(?^mut c_void, ^mut u8, c_int),
+    pub user_data: ?^mut c_void,
 }
 
 pub struct SDL_Keysym {
@@ -104,7 +104,7 @@ pub const SDL_WINDOWPOS_CENTERED: c_int = 0x2fff0000;
 
 pub extern fn SDL_Init(flags: u32): c_int;
 pub extern fn SDL_CreateWindow(
-    title: *raw c_char,
+    title: ^c_char,
     kw x: c_int,
     kw y: c_int,
     kw w: c_int,
@@ -156,7 +156,7 @@ pub extern fn SDL_UpdateTexture(
 pub extern fn SDL_LockTexture(
     texture: *mut SDL_Texture,
     rect:    ?*SDL_Rect,
-    pixels:  *raw *raw c_void,
+    pixels:  ^mut ^mut c_void,
     pitch:   *mut c_int,
 ): c_int;
 pub extern fn SDL_UnlockTexture(texture: *mut SDL_Texture);
@@ -168,10 +168,10 @@ pub extern fn SDL_Quit();
 pub extern fn SDL_GetError(): *c_char;
 pub extern fn SDL_Delay(ms: u32);
 
-pub extern fn SDL_SetWindowTitle(window: *mut SDL_Window, title: *raw c_char);
+pub extern fn SDL_SetWindowTitle(window: *mut SDL_Window, title: ^c_char);
 pub extern fn SDL_GetWindowSurface(window: *mut SDL_Window): ?*mut SDL_Surface;
 pub extern fn SDL_CreateRGBSurfaceFrom(
-    pixels:    *raw c_void,
+    pixels:    ^mut c_void,
     kw width:  c_int,
     kw height: c_int,
     kw depth:  c_int,

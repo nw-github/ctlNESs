@@ -102,7 +102,7 @@ fn print_channels([a, b, t, n, d]: *[bool; 5]) {
         icons[*d as u8]}");
 }
 
-fn main(args: [str..]): c_int {
+fn main(): int {
     static NAME: str = "ctlNESs";
     const SAMPLE_RATE: uint = 48000;
 
@@ -111,8 +111,9 @@ fn main(args: [str..]): c_int {
         Scancode::A: JoystickBtn::Left,
         Scancode::S: JoystickBtn::Down,
         Scancode::D: JoystickBtn::Right,
-        Scancode::I: JoystickBtn::B,
-        Scancode::O: JoystickBtn::A,
+        Scancode::O: JoystickBtn::B,
+        Scancode::I: JoystickBtn::A,
+        Scancode::U: JoystickBtn::A,
         Scancode::Return: JoystickBtn::Start,
         Scancode::Tab: JoystickBtn::Select,
     ];
@@ -128,6 +129,7 @@ fn main(args: [str..]): c_int {
     mut vsync = false;
     mut scale = 3u32;
 
+    let args: [str] = std::env::args().collect();
     mut i = 0u;
     while args.get(i++) is ?arg {
         match *arg {

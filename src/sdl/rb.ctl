@@ -1,7 +1,7 @@
 use std::sync::Atomic;
 
 pub struct RingBuffer<T> {
-    buf: *raw T,
+    buf: ^mut T,
     cap: uint,
     read: Atomic<uint>,
     write: Atomic<uint>,
@@ -12,7 +12,7 @@ pub struct RingBuffer<T> {
         }
 
         RingBuffer(
-            buf: Vec::<T>::with_capacity(size + 1).as_raw(),
+            buf: Vec::<T>::with_capacity(size + 1).as_raw_mut(),
             cap: size + 1,
             read: Atomic::new(0),
             write: Atomic::new(0),

@@ -65,7 +65,7 @@ pub struct File {
     pub fn read(mut this, buf: [mut u8..]): uint {
         unsafe __libc::fread(
             buf.as_raw() as *mut c_void,
-            core::mem::size_of::<u8>(),
+            std::mem::size_of::<u8>(),
             buf.len(),
             this,
         )

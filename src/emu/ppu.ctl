@@ -313,7 +313,7 @@ pub struct Ppu {
 
     // r $2004
     pub fn read_oam(this): u8 {
-        unsafe *this.oam_ptr(this.oam_addr)
+        this.oam_bytes()[this.oam_addr]
     }
 
     // r $2007
@@ -351,7 +351,7 @@ pub struct Ppu {
 
     // w $2004
     pub fn write_oam(mut this, val: u8) {
-        unsafe *this.oam_ptr(this.oam_addr++) = val;
+        this.oam_bytes_mut()[this.oam_addr++ as uint] = val;
     }
 
     // w $2005
@@ -385,7 +385,7 @@ pub struct Ppu {
 
     // w $4014
     pub fn write_oam_dma(mut this, idx: u8, val: u8) {
-        unsafe *this.oam_ptr(this.oam_addr.wrapping_add(idx)) = val;
+        this.oam_bytes_mut()[this.oam_addr.wrapping_add(idx) as uint] = val;
     }
 
     fn read(this, addr: u16): u8 {
@@ -448,8 +448,20 @@ pub struct Ppu {
         }
     }
 
-    fn oam_ptr(this, addr: u8): *raw u8 {
-        (&raw this.oam).cast() + addr
+    fn oam_bytes(this): [u8..] {
+        let oam = this.oam[..];
+        unsafe std::span::Span::new(
+            oam.as_raw().cast(),
+            oam.len() * std::mem::size_of::<Sprite>(),
+        )
+    }
+
+    fn oam_bytes_mut(mut this): [mut u8..] {
+        let oam = this.oam[..];
+        unsafe std::span::SpanMut::new(
+            oam.as_raw_mut().cast(),
+            oam.len() * std::mem::size_of::<Sprite>(),
+        )
     }
 }
 
