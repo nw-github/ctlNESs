@@ -69,11 +69,8 @@ pub struct Mmc1 {
         }
 
         fn read_prg(this, addr: u16): u8 {
-            if addr < 0xc000 {
-                this.cart.prg_rom[this.prg_bank0..][addr & 0x3fff]
-            } else {
-                this.cart.prg_rom[this.prg_bank1..][addr & 0x3fff]
-            }
+            let bank = addr < 0xc000 then this.prg_bank0 else this.prg_bank1;
+            this.cart.prg_rom[bank..][addr & 0x3fff]
         }
 
         fn write_prg(mut this, addr: u16, val: u8) {
@@ -85,8 +82,7 @@ pub struct Mmc1 {
             }
 
             this.d0 = (this.d0 >> 1) | ((val & 1) << 4);
-            this.write++;
-            guard this.write == 5 else {
+            guard ++this.write == 5 else {
                 return;
             }
 

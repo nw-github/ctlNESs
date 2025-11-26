@@ -23,7 +23,7 @@ pub union InputMode {
 pub struct Input {
     data: [u8; 2] = [0; 2],
     real: [u8; 2] = [0; 2],
-    mode: InputMode,
+    pub mode: InputMode,
 
     pub fn new(mode: InputMode): This {
         Input(mode:)
@@ -55,14 +55,6 @@ pub struct Input {
                 _ => return,
             });
         }
-    }
-
-    pub fn set_mode(mut this, mode: InputMode) {
-        this.mode = mode;
-    }
-
-    pub fn mode(this): InputMode {
-        this.mode
     }
 
     pub fn raw_state(this): [u8; 2] {

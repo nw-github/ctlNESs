@@ -240,7 +240,7 @@ fn main(): int {
                         :R => {
                             if event.modifiers & (0x40 | 0x80) != 0 {
                                 nes = Nes::new(
-                                    nes.input().mode(),
+                                    nes.input().mode,
                                     cart,
                                     cart.has_battery.then_some(nes.sram()),
                                 );
@@ -260,17 +260,17 @@ fn main(): int {
                             println("set speed to {speed}x");
                         }
                         :Num4 => {
-                            match nes.input().mode() {
+                            match nes.input().mode {
                                 :AllowOpposing => {
-                                    nes.input().set_mode(:Keyboard);
+                                    nes.input().mode = :Keyboard;
                                     println("set input mode to keyboard");
                                 }
                                 :Keyboard => {
-                                    nes.input().set_mode(:Nes);
+                                    nes.input().mode = :Nes;
                                     println("set input mode to nes");
                                 }
                                 :Nes => {
-                                    nes.input().set_mode(:AllowOpposing);
+                                    nes.input().mode = :AllowOpposing;
                                     println("set input mode to allow opposing");
                                 }
                             }

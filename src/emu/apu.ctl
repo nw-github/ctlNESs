@@ -313,7 +313,7 @@ struct Timer {
 struct Pulse {
     duty: u2 = 0,
     sweep: Sweep = Sweep(),
-    duty_val: u8 = 0,
+    duty_val: u3 = 0,
     enabled: bool = false,
     tmr: Timer = Timer(),
     envelope: Envelope = Envelope(),
@@ -338,7 +338,7 @@ struct Pulse {
 
     pub fn clock(mut this) {
         if this.tmr.clock() {
-            this.duty_val = (this.duty_val + 1) % 8;
+            this.duty_val = this.duty_val.wrapping_add(1);
         }
     }
 
@@ -407,12 +407,12 @@ struct Triangle {
     len_count: LenCounter = LenCounter(),
     lin_count: LinearCounter = LinearCounter(),
     enabled: bool = false,
-    duty_val: u8 = 0,
+    duty_val: u5 = 0,
     muted: bool = false,
 
     pub fn clock(mut this) {
         if this.tmr.clock() {
-            this.duty_val = (this.duty_val + 1) % 32;
+            this.duty_val = this.duty_val.wrapping_add(1);
         }
     }
 
@@ -440,7 +440,7 @@ struct Noise {
 
     pub fn clock(mut this) {
         if this.tmr.clock() {
-            let bit = if this.mode { 6u32 } else { 1 };
+            let bit = this.mode then 6u32 else 1;
             let feedback = (this.shift_reg & 1) ^ ((this.shift_reg >> bit) & 1);
             this.shift_reg = (this.shift_reg >> 1) | (feedback << 14);
         }
@@ -483,9 +483,9 @@ struct Dmc {
 
         if !this.silence {
             if this.out_shift_reg & 1 != 0 {
-                this.output_val += (this.output_val <= 125) as u8 * 2;
+                this.output_val += this.output_val <= 125 then 2 else 1;
             } else {
-                this.output_val -= (this.output_val >= 2) as u8 * 2;
+                this.output_val -= this.output_val >= 2 then 2 else 1;
             }
             this.out_shift_reg >>= 1;
         }
