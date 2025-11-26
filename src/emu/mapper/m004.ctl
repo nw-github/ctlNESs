@@ -129,7 +129,8 @@ pub struct Mmc3 {
                     }
                 },
                 _ => {
-                    // Writing any value to this register will disable MMC3 interrupts AND acknowledge any pending interrupts.
+                    // Writing any value to this register will disable MMC3 interrupts AND
+                    // acknowledge any pending interrupts.
                     this.irq_enabled = addr & 1 != 0;
                 }
             }

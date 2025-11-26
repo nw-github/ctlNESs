@@ -79,8 +79,6 @@ pub struct Nes {
     audio: [f64],
 
     pub fn new(ipt_mode: InputMode, cart: Cart, prg_ram: ?[u8..]): Nes {
-        use mapper::*;
-
         let irq_pending = std::alloc::new(false);
         Nes(
             cpu: Cpu::new(CpuBus::new(
@@ -88,11 +86,11 @@ pub struct Nes {
                 sram: prg_ram,
                 Input::new(ipt_mode),
                 match cart.mapper {
-                    0 => std::alloc::new(m000::Nrom::new(cart)),
-                    1 => std::alloc::new(m001::Mmc1::new(cart)),
-                    2 => std::alloc::new(m002::UxRom::new(cart)),
-                    4 => std::alloc::new(m004::Mmc3::new(cart, irq_pending)),
-                    9 => std::alloc::new(m009::Mmc2::new(cart)),
+                    0 => std::alloc::new(mapper::m000::Nrom::new(cart)),
+                    1 => std::alloc::new(mapper::m001::Mmc1::new(cart)),
+                    2 => std::alloc::new(mapper::m002::UxRom::new(cart)),
+                    4 => std::alloc::new(mapper::m004::Mmc3::new(cart, irq_pending)),
+                    9 => std::alloc::new(mapper::m009::Mmc2::new(cart)),
                     i => panic("unsupported mapper: {i}"),
                 }),
             ),

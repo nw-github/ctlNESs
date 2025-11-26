@@ -12,10 +12,10 @@ struct Timespec {
         mut tv_nsec = this.tv_nsec - rhs.tv_nsec;
         mut tv_sec  = this.tv_sec - rhs.tv_sec;
         if tv_sec > 0 and tv_nsec < 0 {
-            tv_nsec += 1000000000;
+            tv_nsec += 1_000_000_000;
             tv_sec--;
         } else if tv_sec < 0 and tv_nsec > 0 {
-            tv_nsec -= 1000000000;
+            tv_nsec -= 1_000_000_000;
             tv_sec++;
         }
         Timespec(tv_sec:, tv_nsec:)
@@ -31,11 +31,11 @@ struct Timespec {
     }
 
     pub fn as_nanos(this): u64 {
-        this.tv_nsec as! u64 + this.tv_sec as! u64 * 1000000000
+        this.tv_nsec as! u64 + this.tv_sec as! u64 * 1_000_000_000
     }
 
     pub fn as_millis(this): u64 {
-        this.tv_nsec as! u64 / 1000000 + this.tv_sec as! u64 * 1000
+        this.tv_nsec as! u64 / 1_000_000 + this.tv_sec as! u64 * 1000
     }
 
     pub fn as_seconds(this): f64 {
@@ -43,7 +43,7 @@ struct Timespec {
     }
 
     pub fn from_millis(ms: u64): This {
-        Timespec(tv_sec: (ms / 1000) as! c_long, tv_nsec: (ms % 1000 * 1000000) as! c_long)
+        Timespec(tv_sec: (ms / 1000) as! c_long, tv_nsec: (ms % 1000 * 1_000_000) as! c_long)
     }
 
     pub fn elapsed(this): Timespec {
@@ -212,7 +212,7 @@ fn main(args: [str..]): c_int {
             for v in fps_history.iter() {
                 fps += *v;
             }
-            let fps = fps / fps_history.len() as f64;
+            fps /= fps_history.len() as f64;
             wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
         }
 

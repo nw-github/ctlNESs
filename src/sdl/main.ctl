@@ -314,10 +314,10 @@ struct Renderer {
 
     pub fn present(mut this, window: *Window) {
         unsafe SDL_RenderCopy(this.renderer, this.texture, null, &SDL_Rect(
-            x: 0, 
-            y: 0, 
-            w: window.width * window.scale, 
-            h: window.height * window.scale
+            x: 0,
+            y: 0,
+            w: window.width * window.scale,
+            h: window.height * window.scale,
         ));
         unsafe SDL_RenderPresent(this.renderer);
     }

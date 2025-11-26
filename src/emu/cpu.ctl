@@ -402,7 +402,7 @@ pub struct Cpu {
         this.p.carry = res > 0xff;
         let res = (res & 0xff) as! u8;
         if overflow {
-            this.p.overflow = (res ^ lhs) & (res ^ rhs) & 0x80 != 0;
+            this.p.overflow = (res ^ lhs) & (res ^ rhs) & (1 << 7) != 0;
         }
         res
     }

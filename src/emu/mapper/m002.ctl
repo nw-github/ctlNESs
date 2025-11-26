@@ -6,10 +6,7 @@ pub struct UxRom {
     chr_ram: ?[u8; 0x2000],
 
     pub fn new(cart: Cart): This {
-        UxRom(
-            chr_ram: if cart.chr_rom.is_empty() { [0; 0x2000] },
-            cart:
-        )
+        UxRom(cart:, chr_ram: if cart.chr_rom.is_empty() { [0; 0x2000] })
     }
 
     impl super::Mapper {

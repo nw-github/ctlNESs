@@ -16,8 +16,7 @@ pub union Instr {
     }
 
     pub fn decode(bus: *CpuBus, pc: u16): This {
-        mut decoder = Decoder(bus:, pc:);
-        decoder.next(pc)
+        Decoder(bus:, pc:).next(pc)
     }
 }
 
