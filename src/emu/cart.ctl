@@ -1,3 +1,5 @@
+use ctlness::utils::ReadExt;
+
 pub union Mirroring {
     Horizontal,
     Vertical,
@@ -14,7 +16,7 @@ pub struct Cart {
     pub mapper: u8,
 
     pub fn new(mut data: [u8..]): ?This {
-        guard data.read_exact(4)? is [b'N', b'E', b'S', b'\x1a'] else {
+        guard data.read_exact(4) is ?[b'N', b'E', b'S', b'\x1a'] else {
             return null;
         }
 
@@ -29,11 +31,11 @@ pub struct Cart {
         }
         Cart(
             mirroring: if flags6 & 8 != 0 {
-                Mirroring::FourScreen
+                :FourScreen
             } else {
                 match flags6 & 1 != 0 {
-                    false => Mirroring::Horizontal,
-                    true => Mirroring::Vertical,
+                    false => :Horizontal,
+                    true => :Vertical,
                 }
             },
             has_battery: flags6 & 2 != 0,

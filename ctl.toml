@@ -1,2 +1,4 @@
-root = "./src"
+root = "src"
 name = "ctlness"
+libs = ["m", "SDL2"]
+build = "build"

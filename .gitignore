@@ -3,3 +3,5 @@ roms
 a.out
 main.c
 .clang-format
+
+/build
