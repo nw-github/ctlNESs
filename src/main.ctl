@@ -163,7 +163,7 @@ fn main(): int {
         eprintln("invalid cartridge file");
         return 1;
     }
-    eprintln(if vsync { "vsync enabled" } else { "vsync disabled" });
+    eprintln(vsync then "vsync enabled" else "vsync disabled");
     eprintln("mapper: {cart.mapper}");
     eprintln("has battery: {cart.has_battery}");
     eprintln("mirroring: {cart.mirroring as u8}");

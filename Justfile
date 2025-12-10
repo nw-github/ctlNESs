@@ -1,5 +1,6 @@
 play CMD:
-    ~/.cache/cargo-target/release/ctl r -qo -lSDL2 -lm . -- "{{CMD}}" -s 4
+    ctl r -qo . -- "{{CMD}}" -s 4
 
 dump:
-    ~/.cache/cargo-target/release/ctl p -qp . main.c
+    mkdir -p build
+    ctl p -qp . -o build/main.c

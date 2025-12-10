@@ -16,7 +16,7 @@ packed struct Ctrl {
     master_slave: bool = false,
     nmi_enable: bool = false,
 
-    pub fn increment(this): u16 { if this.inc { 32 } else { 1 } }
+    pub fn increment(this): u16 { this.inc then 32 else 1 }
 
     pub fn from_u8(val: u8): This {
         unsafe std::mem::transmute(val)

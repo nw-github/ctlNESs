@@ -32,10 +32,10 @@ pub extension ReadExt for [u8..] {
 mod __libc {
     use super::File;
 
-    pub extern fn fopen(path: *c_char, mode: *c_char): ?*mut File;
+    pub extern fn fopen(path: ^c_char, mode: ^c_char): ?*mut File;
     pub extern fn fseek(stream: *mut File, offset: c_long, whence: c_int): c_int;
-    pub extern fn fread(ptr: *mut c_void, size: uint, nmemb: uint, stream: *mut File): uint;
-    pub extern fn fwrite(ptr: *c_void, size: uint, nmemb: uint, stream: *mut File): uint;
+    pub extern fn fread(ptr: ^mut c_void, size: uint, nmemb: uint, stream: *mut File): uint;
+    pub extern fn fwrite(ptr: ^c_void, size: uint, nmemb: uint, stream: *mut File): uint;
     pub extern fn ftell(stream: *mut File): c_long;
     pub extern fn fclose(stream: *mut File): c_int;
 }
@@ -49,9 +49,9 @@ pub union SeekPos {
 }
 
 @(opaque, c_name(FILE))
-pub struct File {
-    pub fn open(path: str, mode: str): ?*mut File {
-        unsafe __libc::fopen(path.as_raw() as *c_char, mode.as_raw() as *c_char)
+pub union File {
+    pub fn open(kw path: str, kw mode: str): ?*mut File {
+        unsafe __libc::fopen(path.as_raw().cast(), mode.as_raw().cast())
     }
 
     pub fn seek(mut this, pos: SeekPos): c_int {
@@ -64,7 +64,7 @@ pub struct File {
 
     pub fn read(mut this, buf: [mut u8..]): uint {
         unsafe __libc::fread(
-            buf.as_raw() as *mut c_void,
+            buf.as_raw_mut().cast(),
             std::mem::size_of::<u8>(),
             buf.len(),
             this,
@@ -72,7 +72,7 @@ pub struct File {
     }
 
     pub fn write(mut this, buf: [u8..]): uint {
-        unsafe __libc::fwrite(buf.as_raw() as *c_void, 1, buf.len(), this)
+        unsafe __libc::fwrite(buf.as_raw().cast(), 1, buf.len(), this)
     }
 
     pub fn tell(mut this): c_long {

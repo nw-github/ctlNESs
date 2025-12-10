@@ -628,14 +628,14 @@ pub struct Cpu {
             use super::debugger::*;
 
             fn hex(n: u8, buf: *mut [u8; 2]): str {
-                unsafe { 
+                unsafe {
                     n.to_str_radix_unchecked(16, buf[..]);
                     str::from_utf8_unchecked(buf[..])
                 }
             }
 
             fn hex16(n: u16, buf: *mut [u8; 4]): str {
-                unsafe { 
+                unsafe {
                     n.to_str_radix_unchecked(16, buf[..]);
                     str::from_utf8_unchecked(buf[..])
                 }

@@ -27,7 +27,7 @@ pub struct Mmc3 {
     prg_banks: [uint; 4],
     chr_banks: [uint; 8],
 
-    mirroring: Mirroring = Mirroring::Horizontal,
+    mirroring: Mirroring = :Horizontal,
 
     pub fn new(cart: Cart, irq_pending: *mut bool): This {
         mut chr_banks = [cart.chr_rom.len() - 0x400; 8];
@@ -158,7 +158,7 @@ pub struct Mmc3 {
             this.irq_reload_pending = false;
             this.prg_banks = [0; 4];
             this.chr_banks = [0; 8];
-            this.mirroring = Mirroring::Horizontal;
+            this.mirroring = :Horizontal;
         }
     }
 }
