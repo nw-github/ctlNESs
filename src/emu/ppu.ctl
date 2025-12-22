@@ -242,7 +242,7 @@ pub struct Ppu {
             };
 
             mut idx = this.read(0x3f00 + (palette as u16));
-            if idx as uint >= PALETTE[..].len() {
+            if idx as uint >= PALETTE.len() {
                 // eprintln("attempt to render bad palette index {idx}");
                 idx = 0;
             }
@@ -279,7 +279,7 @@ pub struct Ppu {
             for i in this.oam_addr / 4..64 {
                 let spr_y = this.oam[i].y as u16;
                 if this.scanline >= spr_y and this.scanline - spr_y < range {
-                    if this.sprite_count == this.sprites[..].len() {
+                    if this.sprite_count == this.sprites.len() {
                         this.spr_overflow = true;
                         break;
                     }
@@ -449,18 +449,16 @@ pub struct Ppu {
     }
 
     fn oam_bytes(this): [u8..] {
-        let oam = this.oam[..];
         unsafe std::span::Span::new(
-            oam.as_raw().cast(),
-            oam.len() * std::mem::size_of::<Sprite>(),
+            this.oam.as_raw().cast(),
+            this.oam.len() * std::mem::size_of::<Sprite>(),
         )
     }
 
     fn oam_bytes_mut(mut this): [mut u8..] {
-        let oam = this.oam[..];
         unsafe std::span::SpanMut::new(
-            oam.as_raw_mut().cast(),
-            oam.len() * std::mem::size_of::<Sprite>(),
+            this.oam.as_raw_mut().cast(),
+            this.oam.len() * std::mem::size_of::<Sprite>(),
         )
     }
 }

@@ -44,7 +44,7 @@ pub struct Mmc2 {
                     this.chr_banks[(addr - 0xb000) >> 12] = (val & 0x1f) as uint * 0x1000;
                 }
                 0xf000..=0xffff => {
-                    this.mirroring = if val & 1 == 0 { :Vertical } else { :Horizontal };
+                    this.mirroring = val & 1 == 0 then :Vertical else :Horizontal;
                 }
                 _ => {}
             }

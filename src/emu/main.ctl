@@ -97,9 +97,9 @@ pub struct Nes {
         *this.irq_pending = false;
     }
 
-    pub fn input(mut this): *mut Input { &mut this.cpu.bus.ipt }
+    pub fn input(mut this): *mut Input => &mut this.cpu.bus.ipt;
 
-    pub fn video_buffer(this): [u32..] { this.cpu.bus.ppu.buf[..] }
+    pub fn video_buffer(this): [u32..] => this.cpu.bus.ppu.buf;
 
     pub fn audio_buffer(mut this): [f64..] {
         let buf = this.audio[..];

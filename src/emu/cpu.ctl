@@ -659,9 +659,8 @@ pub struct CpuBus {
 
     pub fn new(ipt: Input, mapper: *dyn mut Mapper, pirq: *mut bool, sram: ?[u8..] = null): This {
         mut self = CpuBus(ipt:, mapper:, ppu: Ppu::new(mapper), apu: Apu::new(pirq));
-        let prg_ram = self.prg_ram[..];
-        if sram is ?sram and sram.len() == prg_ram.len() {
-            prg_ram[..] = sram;
+        if sram is ?sram and sram.len() == self.prg_ram.len() {
+            self.prg_ram[..] = sram;
         }
         self
     }
@@ -768,9 +767,7 @@ pub struct CpuBus {
         (this.peek(addr.wrapping_add(1)) as u16 << 8) | this.peek(addr) as u16
     }
 
-    pub fn sram(this): [u8..] {
-        this.prg_ram[..]
-    }
+    pub fn sram(this): [u8..] => this.prg_ram[..];
 
-    fn open_bus(this): u8 { 0 }
+    fn open_bus(this): u8 => 0;
 }

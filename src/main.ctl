@@ -198,7 +198,7 @@ fn main(): int {
     mut mixer = audio::Mixer::new(SAMPLE_RATE as f64);
 
     mut fps_clock = Clock::new();
-    mut fps_history = [60.0; 20][..];
+    mut fps_history = [60.0; 20];
     mut fpsi = 0u;
 
     mut nes_frame = 1u;

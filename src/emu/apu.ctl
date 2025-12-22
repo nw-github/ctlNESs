@@ -191,8 +191,7 @@ pub struct Apu {
     pub fn output(this): f64 {
         let pulse = this.pulse1.output() + this.pulse2.output();
         let tnd   = this.tri.output() * 3 + this.noise.output() * 2 + this.dmc.output();
-        PULSE_TABLE[pulse as uint % PULSE_TABLE[..].len()]
-            + TND_TABLE[tnd as uint % TND_TABLE[..].len()]
+        PULSE_TABLE[pulse as uint % PULSE_TABLE.len()] + TND_TABLE[tnd as uint % TND_TABLE.len()]
     }
 
     fn clock_quarter_frame(mut this) {
@@ -544,7 +543,7 @@ struct Dmc {
 
 static PULSE_TABLE: [f64; 31] = {
     mut table = [0.0; 31];
-    for (i, v) in table[..].iter_mut().enumerate() {
+    for (i, v) in table.iter_mut().enumerate() {
         *v = 95.52 / (8128.0 / i as f64 + 100.0);
     }
     table
@@ -552,7 +551,7 @@ static PULSE_TABLE: [f64; 31] = {
 
 static TND_TABLE: [f64; 203] = {
     mut table = [0.0; 203];
-    for (i, v) in table[..].iter_mut().enumerate() {
+    for (i, v) in table.iter_mut().enumerate() {
         *v = 163.67 / (24329.0 / i as f64 + 100.0);
     }
     table
