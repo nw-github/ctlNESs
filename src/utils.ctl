@@ -34,8 +34,8 @@ mod __libc {
 
     pub extern fn fopen(path: ^c_char, mode: ^c_char): ?*mut File;
     pub extern fn fseek(stream: *mut File, offset: c_long, whence: c_int): c_int;
-    pub extern fn fread(ptr: ^mut c_void, size: uint, nmemb: uint, stream: *mut File): uint;
-    pub extern fn fwrite(ptr: ^c_void, size: uint, nmemb: uint, stream: *mut File): uint;
+    pub extern fn fread(ptr: ^mut void, size: uint, nmemb: uint, stream: *mut File): uint;
+    pub extern fn fwrite(ptr: ^void, size: uint, nmemb: uint, stream: *mut File): uint;
     pub extern fn ftell(stream: *mut File): c_long;
     pub extern fn fclose(stream: *mut File): c_int;
 }

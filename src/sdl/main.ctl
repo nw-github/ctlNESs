@@ -183,7 +183,7 @@ pub struct Window {
     }
 
     pub fn draw_scaled(mut this, src: [u32..]): bool {
-        mut dst: ^mut c_void;
+        mut dst: ^mut void;
         mut pitch = 0ic;
         guard unsafe SDL_LockTexture(this.renderer.texture, null, &mut dst, &mut pitch) == 0 else {
             return false;
@@ -245,8 +245,8 @@ pub struct Audio {
             samples: (buf_size / 2) as! u16,
             silence: 0,
             size: 0,
-            callback: Audio::sdl_callback,
-            user_data: self as ^mut c_void, // this might be a problem for the GC
+            callback: sdl_audio_callback,
+            user_data: self as ^mut void, // this might be a problem for the GC
         );
         self.device = unsafe SDL_OpenAudioDevice(null, 0, &spec, null, 0);
         guard self.device != 0 else {
@@ -271,13 +271,13 @@ pub struct Audio {
     pub fn buffer(mut this): *mut rb::RingBuffer<f32> {
         &mut this.buf
     }
+}
 
-    fn sdl_callback(user_data: ?^mut c_void, samples: ^mut u8, len: c_int) {
-        let self = unsafe user_data! as *mut Audio;
-        let samples = unsafe SpanMut::new(samples.cast::<f32>(), len as! uint / 4);
-        for sample in samples.iter_mut() {
-            *sample = self.buf.pop() ?? 0.0;
-        }
+extern fn sdl_audio_callback(user_data: ?^mut void, samples: ^mut u8, len: c_int) {
+    let self = unsafe user_data! as *mut Audio;
+    let samples = unsafe SpanMut::new(samples.cast::<f32>(), len as! uint / 4);
+    for sample in samples.iter_mut() {
+        *sample = self.buf.pop() ?? 0.0;
     }
 }
 

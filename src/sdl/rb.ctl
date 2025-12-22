@@ -26,7 +26,7 @@ pub struct RingBuffer<T> {
             return item;
         }
 
-        unsafe *(this.buf + pos) = item;
+        unsafe this.buf.add(pos).write(item);
         this.write.store(next);
         null
     }
@@ -35,7 +35,7 @@ pub struct RingBuffer<T> {
         let pos = this.read.load();
         if pos != this.write.load() {
             this.read.store((pos + 1) % this.cap);
-            unsafe *(this.buf + pos)
+            unsafe this.buf.add(pos).read()
         }
     }
 

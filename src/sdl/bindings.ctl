@@ -14,8 +14,8 @@ pub struct SDL_AudioSpec {
     pub samples: u16,
     pub _padding: u16 = 0,
     pub size: u32,
-    pub callback: ?fn(?^mut c_void, ^mut u8, c_int),
-    pub user_data: ?^mut c_void,
+    pub callback: ?extern fn(?^mut void, ^mut u8, c_int),
+    pub user_data: ?^mut void,
 }
 
 pub struct SDL_Keysym {
@@ -149,14 +149,14 @@ pub extern fn SDL_CreateTexture(
 pub extern fn SDL_UpdateTexture(
     texture: *mut SDL_Texture,
     rect:    ?*SDL_Rect,
-    pixels:  *c_void,
+    pixels:  ^void,
     pitch:   c_int,
 ): c_int;
 
 pub extern fn SDL_LockTexture(
     texture: *mut SDL_Texture,
     rect:    ?*SDL_Rect,
-    pixels:  ^mut ^mut c_void,
+    pixels:  *mut ^mut void,
     pitch:   *mut c_int,
 ): c_int;
 pub extern fn SDL_UnlockTexture(texture: *mut SDL_Texture);
@@ -165,13 +165,13 @@ pub extern fn SDL_DestroyTexture(texture: *mut SDL_Texture);
 pub extern fn SDL_PollEvent(event: *mut SDL_Event): c_int;
 pub extern fn SDL_GetTicks64(): u64;
 pub extern fn SDL_Quit();
-pub extern fn SDL_GetError(): *c_char;
+pub extern fn SDL_GetError(): ^c_char;
 pub extern fn SDL_Delay(ms: u32);
 
 pub extern fn SDL_SetWindowTitle(window: *mut SDL_Window, title: ^c_char);
 pub extern fn SDL_GetWindowSurface(window: *mut SDL_Window): ?*mut SDL_Surface;
 pub extern fn SDL_CreateRGBSurfaceFrom(
-    pixels:    ^mut c_void,
+    pixels:    ^mut void,
     kw width:  c_int,
     kw height: c_int,
     kw depth:  c_int,
@@ -191,14 +191,14 @@ pub extern fn SDL_BlitScaled(
 pub extern fn SDL_FreeSurface(surface: *mut SDL_Surface);
 
 pub extern fn SDL_OpenAudioDevice(
-    device:          ?*c_char,
+    device:          ?^c_char,
     is_capture:      c_int,
     desired:         *SDL_AudioSpec,
     obtained:        ?*mut SDL_AudioSpec,
     allowed_changes: c_int,
 ): u32;
 pub extern fn SDL_PauseAudioDevice(dev: u32, pause_on: c_int);
-pub extern fn SDL_QueueAudio(dev: u32, data: *c_void, len: u32): c_int;
+pub extern fn SDL_QueueAudio(dev: u32, data: ^void, len: u32): c_int;
 pub extern fn SDL_ClearQueuedAudio(dev: u32);
 pub extern fn SDL_CloseAudioDevice(dev: u32);
 
