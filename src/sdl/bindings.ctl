@@ -72,7 +72,7 @@ pub unsafe union SDL_Event {
     typ: u32,
     key: SDL_KeyboardEvent,
     window: SDL_WindowEvent,
-    _pad: [u8; 52],
+    _pad: [u8; 56],
 }
 
 pub struct SDL_Rect {
