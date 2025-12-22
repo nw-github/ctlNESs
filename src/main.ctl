@@ -163,14 +163,14 @@ fn main(): int {
         eprintln("invalid cartridge file");
         return 1;
     }
-    eprintln(vsync then "vsync enabled" else "vsync disabled");
+    eprintln("vsync {vsync then "enabled" else "disabled"}");
     eprintln("mapper: {cart.mapper}");
     eprintln("has battery: {cart.has_battery}");
     eprintln("mirroring: {cart.mirroring as u8}");
-    eprintln("chr_rom: 0x{cart.chr_rom.len().to_str_radix(16)}");
-    eprintln("prg_rom: 0x{cart.prg_rom.len().to_str_radix(16)}");
+    eprintln("chr_rom: {cart.chr_rom.len():#x}");
+    eprintln("prg_rom: {cart.prg_rom.len():#x}");
 
-    let save_path = "{path}.nsav";
+    let save_path = "{path}.nsav".to_str();
     let save = if cart.has_battery and read_bytes(save_path) is ?save {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
@@ -215,7 +215,7 @@ fn main(): int {
                 fps += *v;
             }
             fps /= fps_history.len() as f64;
-            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
+            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)".to_str());
         }
 
         wnd.clear(Color::rgb(0, 0, 0));

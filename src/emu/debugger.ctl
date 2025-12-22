@@ -178,7 +178,7 @@ struct Decoder {
             0xf9 => this.arithmetic(Load::Aby, Operation::Sbc),
             0xfd => this.arithmetic(Load::Abx, Operation::Sbc),
             0xfe => this.inc_dec(dec: false, IncLoad::Abx),
-            opcode => Instr::Imp(mnemonic: "UNK", "0x{opcode.to_str_radix(16)}"),
+            opcode => Instr::Imp(mnemonic: "UNK", "{opcode:#02x}".to_str()),
         }
     }
 

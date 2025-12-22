@@ -49,13 +49,13 @@ packed struct Flags {
     }
 
     impl std::fmt::Format {
-        fn fmt<F: std::fmt::Formatter>(this, f: *mut F) {
-            f.write_str(if this.negative { "N" } else { "-" });
-            f.write_str(if this.overflow { "V" } else { "-" });
-            f.write_str(if this.decimal { "D" } else { "-" });
-            f.write_str(if this.int_disable { "I" } else { "-" });
-            f.write_str(if this.zero { "Z" } else { "-" });
-            f.write_str(if this.carry { "C" } else { "-" });
+        fn fmt(this, f: *mut std::fmt::Formatter) {
+            f.write_str(this.negative then "N" else "-");
+            f.write_str(this.overflow then "V" else "-");
+            f.write_str(this.decimal then "D" else "-");
+            f.write_str(this.int_disable then "I" else "-");
+            f.write_str(this.zero then "Z" else "-");
+            f.write_str(this.carry then "C" else "-");
         }
     }
 }
@@ -255,11 +255,7 @@ pub struct Cpu {
             0xf9 => this.arithmetic(Load::Aby, Operation::Sbc),
             0xfd => this.arithmetic(Load::Abx, Operation::Sbc),
             0xfe => this.inc_dec(dec: false, IncLoad::Abx),
-            opcode => {
-                eprintln("invalid opcode 0x{opcode.to_str_radix(16)}, reading at 0x{
-                    this.pc.wrapping_sub(1).to_str_radix(16)}"
-                );
-            }
+            op => eprintln("invalid opcode {op:#x}, reading at {this.pc.wrapping_sub(1):#x}"),
         }
     }
 
@@ -624,52 +620,29 @@ pub struct Cpu {
     // -------------
 
     impl std::fmt::Format {
-        fn fmt<F: std::fmt::Formatter>(this, f: *mut F) {
-            use super::debugger::*;
+        fn fmt(this, f: *mut std::fmt::Formatter) {
+            use super::debugger::Instr;
 
-            fn hex(n: u8, buf: *mut [u8; 2]): str {
-                unsafe {
-                    n.to_str_radix_unchecked(16, buf[..]);
-                    str::from_utf8_unchecked(buf[..])
-                }
-            }
-
-            fn hex16(n: u16, buf: *mut [u8; 4]): str {
-                unsafe {
-                    n.to_str_radix_unchecked(16, buf[..]);
-                    str::from_utf8_unchecked(buf[..])
-                }
-            }
-
-            mut start = f.written().len();
-            f.write_str("{hex16(this.pc, &mut [b'0'; 4])}: ");
             let ins = Instr::decode(&this.bus, this.pc);
-            f.write_str("\x1b[32m{ins.mnemonic}\x1b[0m ");
-            (match ins {
-                Instr::Imp(?reg) => {
-                    start -= 9;
-                    reg
-                },
-                Instr::Imm(val) => "\x1b[35m#${hex(val, &mut [b'0'; 2])}\x1b[0m",
-                Instr::Zp(val, ?reg) => "\x1b[34m${hex(val, &mut [b'0'; 2])}\x1b[0m, {reg}",
-                Instr::Zp(val, null) => "\x1b[34m${hex(val, &mut [b'0'; 2])}\x1b[0m",
-                Instr::Izx(val) => "(\x1b[36m${hex(val, &mut [b'0'; 2])}\x1b[0m, X)",
-                Instr::Izy(val) => "(\x1b[36m${hex(val, &mut [b'0'; 2])}\x1b[0m), Y",
-                Instr::Ind(val) => "(\x1b[36m${hex16(val, &mut [b'0'; 4])}\x1b[0m)",
-                Instr::Abs(val, ?reg) => "\x1b[36m${hex16(val, &mut [b'0'; 4])}\x1b[0m, {reg}",
-                Instr::Abs(val, null) => "\x1b[36m${hex16(val, &mut [b'0'; 4])}\x1b[0m",
-                _ => {
-                    start -= 9;
-                    ""
-                },
-            }).fmt(f);
+            mut buf = "{this.pc:#04x}\x1b[32m{ins.mnemonic}\x1b[0m ".to_str();
+            match ins {
+                Instr::Imp(?reg)      => buf += reg,
+                Instr::Imm(val)       => buf += "\x1b[35m#${val:#02x}\x1b[0m".to_str(),
+                Instr::Zp(val, ?reg)  => buf += "\x1b[34m${val:#02x}\x1b[0m, {reg}".to_str(),
+                Instr::Zp(val, null)  => buf += "\x1b[34m${val:#02x}\x1b[0m".to_str(),
+                Instr::Izx(val)       => buf += "(\x1b[36m${val:#02x}\x1b[0m, X)".to_str(),
+                Instr::Izy(val)       => buf += "(\x1b[36m${val:#02x}\x1b[0m), Y".to_str(),
+                Instr::Ind(val)       => buf += "(\x1b[36m${val:#04x}\x1b[0m)".to_str(),
+                Instr::Abs(val, ?reg) => buf += "\x1b[36m${val:#04x}\x1b[0m, {reg}".to_str(),
+                Instr::Abs(val, null) => buf += "\x1b[36m${val:#04x}\x1b[0m".to_str(),
+                _ => { },
+            }
 
-            f.write_str(" ".repeat(1 + 40 - 40u.min(f.written().len() - start)));
-            f.write_str("; A: \x1b[31m{
-                hex(this.a, &mut [b'0'; 2])}\x1b[0m  X: \x1b[33m{
-                hex(this.x, &mut [b'0'; 2])}\x1b[0m  Y: \x1b[34m{
-                hex(this.y, &mut [b'0'; 2])}\x1b[0m  S: \x1b[35m{
-                hex(this.s, &mut [b'0'; 2])}\x1b[0m  [{this.p}]");
+            write(f, "{buf:<40}; A: \x1b[31m{
+                this.a:#02x}\x1b[0m  X: \x1b[33m{
+                this.x:#02x}\x1b[0m  Y: \x1b[34m{
+                this.y:#02x}\x1b[0m  S: \x1b[35m{
+                this.s:#02x}\x1b[0m  [{this.p}]");
         }
     }
 }
@@ -726,7 +699,7 @@ pub struct CpuBus {
             0x4015 => this.apu.write_status(this, val),
             0x4016 => if val & 1 != 0 { this.poll_input = this.ipt.raw_state(); }
             0x4017 => this.apu.write_frame_counter(val),
-            ..0x6000 => eprintln("attempt to write to expansion ROM at 0x{addr.to_str_radix(16)}"),
+            ..0x6000 => eprintln("attempt to write to expansion ROM at {addr:#x}"),
             ..0x8000 => this.prg_ram[addr - 0x6000] = val,
             _ => this.mapper.write_prg(addr, val),
         }
@@ -753,7 +726,7 @@ pub struct CpuBus {
                 res
             }
             ..0x6000 => {
-                eprintln("attempt to read from expansion ROM at 0x{addr.to_str_radix(16)}");
+                eprintln("attempt to read from expansion ROM at {addr:#x}");
                 this.open_bus()
             },
             ..0x8000 => this.prg_ram[addr - 0x6000],

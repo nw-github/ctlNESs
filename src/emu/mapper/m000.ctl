@@ -37,9 +37,7 @@ pub struct Nrom {
         }
 
         fn write_prg(mut this, addr: u16, val: u8) {
-            eprintln("attempt to write 0x{
-                val.to_str_radix(16)} to rom at addr 0x{
-                addr.to_str_radix(16)}");
+            eprintln("attempt to write {val:#x} to rom at addr {addr:#x}");
         }
 
         fn mirroring(this): Mirroring {
