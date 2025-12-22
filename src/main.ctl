@@ -51,7 +51,7 @@ struct Timespec {
     }
 }
 
-pub struct Clock {
+struct Clock {
     last: Timespec,
 
     pub fn new(): Clock {
@@ -92,14 +92,9 @@ fn write_bytes(path: str, bytes: [u8..]): bool {
     fp.write(bytes) == bytes.len()
 }
 
-fn print_channels([a, b, t, n, d]: *[bool; 5]) {
-    let icons = ['🔊', '🔇'];
-    println("1: {
-        icons[*a as u8]} 2: {
-        icons[*b as u8]} T: {
-        icons[*t as u8]} N: {
-        icons[*n as u8]} D: {
-        icons[*d as u8]}");
+fn print_channels([a, b, t, n, d]: [bool; 5]) {
+    let ic = ['🔊', '🔇'];
+    println("1: {ic[a as u8]} 2: {ic[b as u8]} T: {ic[t as u8]} N: {ic[n as u8]} D: {ic[d as u8]}");
 }
 
 fn main(): int {
@@ -215,7 +210,7 @@ fn main(): int {
                 fps += *v;
             }
             fps /= fps_history.len() as f64;
-            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)".to_str());
+            wnd.set_title("{NAME} ({(1.0 / fps * 100.0).floor() / 100.0} FPS)");
         }
 
         wnd.clear(Color::rgb(0, 0, 0));
@@ -234,7 +229,7 @@ fn main(): int {
                         nes.input().press(*btn, 1);
                     } else if CHANNELS.get(&event.scancode) is ?channel {
                         channels[*channel as u8] = nes.toggle_channel_mute(*channel);
-                        print_channels(&channels);
+                        print_channels(channels);
                     }
                     match event.scancode {
                         :R => {

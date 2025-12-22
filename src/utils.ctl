@@ -29,7 +29,7 @@ pub extension ReadExt for [u8..] {
     }
 }
 
-mod __libc {
+mod libc {
     use super::File;
 
     pub extern fn fopen(path: ^c_char, mode: ^c_char): ?*mut File;
@@ -41,21 +41,21 @@ mod __libc {
 }
 
 pub union SeekPos {
-    shared offset: uint,
+    shared offset: i64,
 
     Start,
     Current,
     End,
 }
 
-@(opaque, c_name(FILE))
+@(c_opaque, c_name(FILE))
 pub union File {
     pub fn open(kw path: str, kw mode: str): ?*mut File {
-        unsafe __libc::fopen(path.as_raw().cast(), mode.as_raw().cast())
+        unsafe libc::fopen(path.as_raw().cast(), mode.as_raw().cast())
     }
 
     pub fn seek(mut this, pos: SeekPos): c_int {
-        unsafe __libc::fseek(this, pos.offset as! c_long, match pos {
+        unsafe libc::fseek(this, pos.offset as! c_long, match pos {
             SeekPos::Start => 0,
             SeekPos::Current => 1,
             SeekPos::End => 2,
@@ -63,23 +63,14 @@ pub union File {
     }
 
     pub fn read(mut this, buf: [mut u8..]): uint {
-        unsafe __libc::fread(
-            buf.as_raw_mut().cast(),
-            std::mem::size_of::<u8>(),
-            buf.len(),
-            this,
-        )
+        unsafe libc::fread(buf.as_raw_mut().cast(), std::mem::size_of::<u8>(), buf.len(), this)
     }
 
     pub fn write(mut this, buf: [u8..]): uint {
-        unsafe __libc::fwrite(buf.as_raw().cast(), 1, buf.len(), this)
+        unsafe libc::fwrite(buf.as_raw().cast(), 1, buf.len(), this)
     }
 
-    pub fn tell(mut this): c_long {
-        unsafe __libc::ftell(this)
-    }
+    pub fn tell(mut this): i64 => unsafe libc::ftell(this) as! i64;
 
-    pub fn close(mut this): c_int {
-        unsafe __libc::fclose(this)
-    }
+    pub fn close(mut this): c_int => unsafe libc::fclose(this);
 }

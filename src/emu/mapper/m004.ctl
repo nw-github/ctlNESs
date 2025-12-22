@@ -6,9 +6,7 @@ packed struct Control {
     prg_inversion: bool = false,
     chr_inversion: bool = false,
 
-    pub fn from_u8(val: u8): This {
-        unsafe std::mem::transmute(val)
-    }
+    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
 }
 
 pub struct Mmc3 {
@@ -136,9 +134,7 @@ pub struct Mmc3 {
             }
         }
 
-        fn mirroring(this): Mirroring {
-            this.mirroring
-        }
+        fn mirroring(this): Mirroring => this.mirroring;
 
         fn scanline(mut this) {
             if this.irq_counter == 0 or this.irq_reload_pending {

@@ -40,9 +40,7 @@ pub struct Nrom {
             eprintln("attempt to write {val:#x} to rom at addr {addr:#x}");
         }
 
-        fn mirroring(this): Mirroring {
-            this.cart.mirroring
-        }
+        fn mirroring(this): Mirroring => this.cart.mirroring;
 
         fn reset(mut this) {}
     }

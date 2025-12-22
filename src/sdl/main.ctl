@@ -197,8 +197,11 @@ pub struct Window {
         true
     }
 
-    pub fn set_title(mut this, title: str) {
-        unsafe SDL_SetWindowTitle(this.window, title.as_raw().cast());
+    pub fn set_title<T: std::fmt::Format>(mut this, title: T) {
+        mut builder = std::fmt::StringBuilder::new();
+        write(&mut builder, title);
+        write(&mut builder, "\0");
+        unsafe SDL_SetWindowTitle(this.window, builder.into_str().as_raw().cast());
     }
 
     pub fn poll_event(mut this): ?SdlEvent {

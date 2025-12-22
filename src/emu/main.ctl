@@ -25,9 +25,7 @@ pub struct Input {
     real: [u8; 2] = [0; 2],
     pub mode: InputMode,
 
-    pub fn new(mode: InputMode): This {
-        Input(mode:)
-    }
+    pub fn new(mode: InputMode): This => Input(mode:);
 
     pub fn press(mut this, btn: JoystickBtn, controller: u1) {
         this.data[controller] |= 1 << btn as u32;
@@ -57,9 +55,7 @@ pub struct Input {
         }
     }
 
-    pub fn raw_state(this): [u8; 2] {
-        this.data
-    }
+    pub fn raw_state(this): [u8; 2] => this.data;
 }
 
 pub const NTSC_CLOCK_RATE: f64 = 1789772.6;
@@ -107,7 +103,7 @@ pub struct Nes {
         buf
     }
 
-    pub fn sram(this): [u8..] { this.cpu.bus.sram() }
+    pub fn sram(this): [u8..] => this.cpu.bus.sram();
 
     pub fn cycle(mut this): bool {
         let result = this.cpu.bus.ppu.step();

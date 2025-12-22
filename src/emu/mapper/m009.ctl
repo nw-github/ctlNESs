@@ -7,9 +7,7 @@ pub struct Mmc2 {
     chr_banks: [uint; 4] = [0; 4],
     latch: [bool; 2] = [true; 2],
 
-    pub fn new(cart: Cart): This {
-        Mmc2(mirroring: cart.mirroring, cart:)
-    }
+    pub fn new(cart: Cart): This => Mmc2(mirroring: cart.mirroring, cart:);
 
     impl super::Mapper {
         fn read_chr(mut this, addr: u16): u8 {
@@ -50,15 +48,10 @@ pub struct Mmc2 {
             }
         }
 
-        fn mirroring(this): Mirroring {
-            this.mirroring
-        }
+        fn mirroring(this): Mirroring => this.mirroring;
 
         fn reset(mut this) {
-            this.prg_bank = 0;
-            this.chr_banks = [0; 4];
-            this.latch = [true; 2];
-            this.mirroring = this.cart.mirroring;
+            *this = Mmc2::new(this.cart);
         }
     }
 }

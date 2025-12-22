@@ -5,9 +5,7 @@ packed struct Control {
     prg_mode: u2 = 0b10,
     mirroring: u2 = 0b01,
 
-    pub fn from_u8(val: u8): This {
-        unsafe std::mem::transmute(val)
-    }
+    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
 }
 
 pub struct Mmc1 {

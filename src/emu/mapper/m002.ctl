@@ -36,9 +36,7 @@ pub struct UxRom {
             this.bank = val & 0xf;
         }
 
-        fn mirroring(this): Mirroring {
-            this.cart.mirroring
-        }
+        fn mirroring(this): Mirroring => this.cart.mirroring;
 
         fn reset(mut this) {
             this.bank = 0;

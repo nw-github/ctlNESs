@@ -16,11 +16,8 @@ packed struct Ctrl {
     master_slave: bool = false,
     nmi_enable: bool = false,
 
-    pub fn increment(this): u16 { this.inc then 32 else 1 }
-
-    pub fn from_u8(val: u8): This {
-        unsafe std::mem::transmute(val)
-    }
+    pub fn increment(this): u16 => this.inc then 32 else 1;
+    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
 }
 
 packed struct Mask {
@@ -33,9 +30,7 @@ packed struct Mask {
     emphasize_green: bool = false,
     emphasize_blue: bool = false,
 
-    pub fn from_u8(val: u8): This {
-        unsafe std::mem::transmute(val)
-    }
+    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
 }
 
 union State {
@@ -86,9 +81,7 @@ pub struct Ppu {
     oam_addr: u8 = 0,
     data_buf: u8 = 0,
 
-    pub fn new(mapper: *dyn mut Mapper): This {
-        Ppu(mapper:)
-    }
+    pub fn new(mapper: *dyn mut Mapper): This => Ppu(mapper:);
 
     pub fn reset(mut this) {
         this.cycle = 0;
@@ -312,9 +305,7 @@ pub struct Ppu {
     }
 
     // r $2004
-    pub fn read_oam(this): u8 {
-        this.oam_bytes()[this.oam_addr]
-    }
+    pub fn read_oam(this): u8 => this.oam_bytes()[this.oam_addr];
 
     // r $2007
     pub fn read_data(mut this): u8 {
@@ -329,9 +320,7 @@ pub struct Ppu {
     }
 
     // r $2007
-    pub fn peek_data(this): u8 {
-        this.read(this.v)
-    }
+    pub fn peek_data(this): u8 => this.read(this.v);
 
     // w $2000
     pub fn write_ctrl(mut this, val: u8) {
@@ -392,7 +381,7 @@ pub struct Ppu {
         match addr {
             ..0x2000 => this.mapper.read_chr(addr),
             ..0x3f00 => {
-                let normalized = if addr >= 0x3000 { addr - 0x1000 } else { addr };
+                let normalized = addr >= 0x3000 then addr - 0x1000 else addr;
                 if this.get_nametable_addr(normalized) is ?nametable {
                     this.ram[nametable + (addr & 0x3ff)]
                 } else {
@@ -440,11 +429,11 @@ pub struct Ppu {
             _ => 3,
         };
         match this.mapper.mirroring() {
-            :Horizontal => [0u16, 0, 0x400, 0x400][nametable],
-            :Vertical => [0u16, 0x400, 0, 0x400][nametable],
+            :Horizontal => nametable < 2 then 0 else 0x400,
+            :Vertical => nametable & 1 == 0 then 0 else 0x400,
             :FourScreen => null,
-            :OneScreenA => [0u16; 4][nametable],
-            :OneScreenB => [0x400u16; 4][nametable],
+            :OneScreenA => 0,
+            :OneScreenB => 0x400,
         }
     }
 
