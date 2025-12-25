@@ -191,7 +191,7 @@ pub struct Ppu {
 
                     let spr_y   = (spr_y + 1) as u16;
                     let tile    = tile as u16;
-                    let len     = if this.ctrl.long_sprites { 16u16 } else { 8 };
+                    let len     = this.ctrl.long_sprites then 16u16 else 8;
                     mut x_shift = (x - spr_x) % 8;
                     mut y_offs  = (y - spr_y) % len;
                     if attr & 0x40 == 0 {
@@ -268,7 +268,7 @@ pub struct Ppu {
         if this.cycle >= SCANLINE_END_CYCLE {
             this.sprite_count = 0;
 
-            let range = if this.ctrl.long_sprites { 16u16 } else { 8 };
+            let range = this.ctrl.long_sprites then 16u16 else 8;
             for i in this.oam_addr / 4..64 {
                 let spr_y = this.oam[i].y as u16;
                 if this.scanline >= spr_y and this.scanline - spr_y < range {

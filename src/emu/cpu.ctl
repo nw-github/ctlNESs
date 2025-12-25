@@ -621,28 +621,25 @@ pub struct Cpu {
 
     impl std::fmt::Format {
         fn fmt(this, f: *mut std::fmt::Formatter) {
-            use super::debugger::Instr;
-
-            let ins = Instr::decode(&this.bus, this.pc);
-            mut buf = "{this.pc:#04x}\x1b[32m{ins.mnemonic}\x1b[0m ".to_str();
+            let ins = super::debugger::Instr::decode(&this.bus, this.pc);
+            mut buf = "{this.pc:#06x}  \x1b[32m{ins.mnemonic}\x1b[0m ".to_str();
+            mut pad = 40u16;
             match ins {
-                Instr::Imp(?reg)      => buf += reg,
-                Instr::Imm(val)       => buf += "\x1b[35m#${val:#02x}\x1b[0m".to_str(),
-                Instr::Zp(val, ?reg)  => buf += "\x1b[34m${val:#02x}\x1b[0m, {reg}".to_str(),
-                Instr::Zp(val, null)  => buf += "\x1b[34m${val:#02x}\x1b[0m".to_str(),
-                Instr::Izx(val)       => buf += "(\x1b[36m${val:#02x}\x1b[0m, X)".to_str(),
-                Instr::Izy(val)       => buf += "(\x1b[36m${val:#02x}\x1b[0m), Y".to_str(),
-                Instr::Ind(val)       => buf += "(\x1b[36m${val:#04x}\x1b[0m)".to_str(),
-                Instr::Abs(val, ?reg) => buf += "\x1b[36m${val:#04x}\x1b[0m, {reg}".to_str(),
-                Instr::Abs(val, null) => buf += "\x1b[36m${val:#04x}\x1b[0m".to_str(),
-                _ => { },
+                :Imp(?reg)      => { buf += reg; pad -= 9; },
+                :Imm(val)       => buf += "\x1b[35m#${val:02x}\x1b[0m".to_str(),
+                :Zp(val, ?reg)  => buf += "\x1b[34m${val:02x}\x1b[0m, {reg}".to_str(),
+                :Zp(val, null)  => buf += "\x1b[34m${val:02x}\x1b[0m".to_str(),
+                :Izx(val)       => buf += "(\x1b[36m${val:02x}\x1b[0m, X)".to_str(),
+                :Izy(val)       => buf += "(\x1b[36m${val:02x}\x1b[0m), Y".to_str(),
+                :Ind(val)       => buf += "(\x1b[36m${val:04x}\x1b[0m)".to_str(),
+                :Abs(val, ?reg) => buf += "\x1b[36m${val:04x}\x1b[0m, {reg}".to_str(),
+                :Abs(val, null) => buf += "\x1b[36m${val:04x}\x1b[0m".to_str(),
+                _ => pad -= 9,
             }
 
-            write(f, "{buf:<40}; A: \x1b[31m{
-                this.a:#02x}\x1b[0m  X: \x1b[33m{
-                this.x:#02x}\x1b[0m  Y: \x1b[34m{
-                this.y:#02x}\x1b[0m  S: \x1b[35m{
-                this.s:#02x}\x1b[0m  [{this.p}]");
+            write(f, "{buf:<pad$}; A: \x1b[31m{this.a:02x}\x1b[0m X: \x1b[33m{
+                this.x:02x}\x1b[0m Y: \x1b[34m{this.y:02x}\x1b[0m S: \x1b[35m{
+                this.s:02x}\x1b[0m P: [\x1b[36m{this.p}\x1b[0m]");
         }
     }
 }
