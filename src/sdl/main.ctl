@@ -333,11 +333,3 @@ struct Renderer {
 pub fn get_last_error(): str {
     unsafe str::from_cstr_unchecked(SDL_GetError())
 }
-
-pub fn delay(ms: u32) {
-    unsafe SDL_Delay(ms);
-}
-
-pub fn get_ticks(): u64 {
-    unsafe SDL_GetTicks64()
-}

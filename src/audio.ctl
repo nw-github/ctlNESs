@@ -15,9 +15,9 @@ pub struct Mixer {
             sample_rate:,
             decim_ratio: NTSC_CLOCK_RATE / sample_rate,
             filters: [
-                Filter::hi_pass(90.0, sample_rate as! f64),
-                Filter::hi_pass(440.0, sample_rate as! f64),
-                Filter::lo_pass(12000.0, sample_rate as! f64),
+                Filter::hi_pass(90.0, sample_rate),
+                Filter::hi_pass(440.0, sample_rate),
+                Filter::lo_pass(12000.0, sample_rate),
                 // supposed to be 14000, but 14000 + dynamic rate control introduces some weird
                 // artifacts with high pitched sounds
             ],
@@ -43,7 +43,7 @@ pub struct Mixer {
                 }
 
                 if buf.push(sample as f32) is ?_ {
-                    super::sdl::delay(1);
+                    std::time::sleep(std::time::Duration::from_millis(1));
                 }
 
                 this.average = 0.0;

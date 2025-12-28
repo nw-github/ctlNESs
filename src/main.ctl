@@ -3,71 +3,7 @@ use utils::*;
 use emu::*;
 use emu::cart::Cart;
 use emu::apu::Channel;
-
-struct Timespec {
-    tv_sec: c_long,
-    tv_nsec: c_long,
-
-    pub fn -(this, rhs: *This): This {
-        mut tv_nsec = this.tv_nsec - rhs.tv_nsec;
-        mut tv_sec  = this.tv_sec - rhs.tv_sec;
-        if tv_sec > 0 and tv_nsec < 0 {
-            tv_nsec += 1_000_000_000;
-            tv_sec--;
-        } else if tv_sec < 0 and tv_nsec > 0 {
-            tv_nsec -= 1_000_000_000;
-            tv_sec++;
-        }
-        Timespec(tv_sec:, tv_nsec:)
-    }
-
-    pub fn now(): This {
-        //         extern fn clock_gettime(clockid: c_int, tp: *mut Timespec): c_int;
-        //
-        //         mut tp = Timespec(tv_sec: 0, tv_nsec: 0);
-        //         clock_gettime(1, &mut tp);
-        //         tp
-        Timespec::from_millis(sdl::get_ticks())
-    }
-
-    pub fn as_nanos(this): u64 {
-        this.tv_nsec as! u64 + this.tv_sec as! u64 * 1_000_000_000
-    }
-
-    pub fn as_millis(this): u64 {
-        this.tv_nsec as! u64 / 1_000_000 + this.tv_sec as! u64 * 1000
-    }
-
-    pub fn as_seconds(this): f64 {
-        this.tv_sec as f64 + (this.tv_nsec as f64 / 1_000_000_000.0)
-    }
-
-    pub fn from_millis(ms: u64): This {
-        Timespec(tv_sec: (ms / 1000) as! c_long, tv_nsec: (ms % 1000 * 1_000_000) as! c_long)
-    }
-
-    pub fn elapsed(this): Timespec {
-        Timespec::now() - this
-    }
-}
-
-struct Clock {
-    last: Timespec,
-
-    pub fn new(): Clock {
-        Clock(last: Timespec::now())
-    }
-
-    pub fn elapsed(this): Timespec {
-        this.last.elapsed()
-    }
-
-    pub fn restart(mut this): Timespec {
-        let elapsed = this.elapsed();
-        this.last = Timespec::now();
-        elapsed
-    }
-}
+use std::time::Instant;
 
 fn read_bytes(path: str): ?[u8] {
     let fp = File::open(path:, mode: "rb")?;
@@ -97,11 +33,11 @@ fn print_channels([a, b, t, n, d]: [bool; 5]) {
     println("1: {ic[a as u8]} 2: {ic[b as u8]} T: {ic[t as u8]} N: {ic[n as u8]} D: {ic[d as u8]}");
 }
 
-fn main(): int {
-    static NAME: str = "ctlNESs";
+fn main() {
+    const NAME: str = "ctlNESs";
     const SAMPLE_RATE: uint = 48000;
 
-    static KEYMAP: [Scancode: JoystickBtn] = [
+    let keymap: [Scancode: JoystickBtn] = [
         Scancode::W: JoystickBtn::Up,
         Scancode::A: JoystickBtn::Left,
         Scancode::S: JoystickBtn::Down,
@@ -112,7 +48,7 @@ fn main(): int {
         Scancode::Return: JoystickBtn::Start,
         Scancode::Tab: JoystickBtn::Select,
     ];
-    static CHANNELS: [Scancode: Channel] = [
+    let channel_hotkeys: [Scancode: Channel] = [
         Scancode::Num6: Channel::Pulse1,
         Scancode::Num7: Channel::Pulse2,
         Scancode::Num8: Channel::Triangle,
@@ -131,13 +67,11 @@ fn main(): int {
             "-v" | "--vsync" => vsync = true,
             "-s" | "--scale" => {
                 guard args.get(i++) is ?next else {
-                    eprintln("argument -s requires a scale");
-                    return 1;
+                    std::proc::fatal("argument -s requires a scale");
                 }
 
                 scale = u32::from_str_radix(*next, 10) ?? {
-                    eprintln("couldn't parse invalid scale '{next}'");
-                    return 1;
+                    std::proc::fatal("couldn't parse invalid scale '{next}'");
                 };
             }
             arg => file = arg,
@@ -145,18 +79,15 @@ fn main(): int {
     }
 
     guard file is ?path else {
-        eprintln("usage: {args[0]} [-v|--vsync] [-s|--scale SCALE] <file>");
-        return 1;
+        std::proc::fatal("usage: {args[0]} [-v|--vsync] [-s|--scale SCALE] <file>");
     }
 
     guard read_bytes(path) is ?data else {
-        eprintln("couldn't read input file '{path}'");
-        return 1;
+        std::proc::fatal("couldn't read input file '{path}'");
     }
 
     guard Cart::new(data[..]) is ?cart else {
-        eprintln("invalid cartridge file");
-        return 1;
+        std::proc::fatal("invalid cartridge file");
     }
     eprintln("vsync {vsync then "enabled" else "disabled"}");
     eprintln("mapper: {cart.mapper}");
@@ -172,8 +103,7 @@ fn main(): int {
     };
     mut nes = Nes::new(InputMode::Nes, cart, save);
     guard Audio::new(sample_rate: SAMPLE_RATE) is ?mut audio else {
-        eprintln("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
-        return 1;
+        std::proc::fatal("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
     }
     defer audio.deinit();
 
@@ -184,26 +114,24 @@ fn main(): int {
         scale:,
         vsync:,
     ) is ?mut wnd else {
-        eprintln("Error occurred while initializing SDL Window: {sdl::get_last_error()}");
-        return 1;
+        std::proc::fatal("Error occurred while initializing SDL Window: {sdl::get_last_error()}");
     }
     defer wnd.deinit();
 
     audio.unpause();
     mut mixer = audio::Mixer::new(SAMPLE_RATE as f64);
 
-    mut fps_clock = Clock::new();
+    mut fps_clock = Instant::now();
     mut fps_history = [60.0; 20];
     mut fpsi = 0u;
-
     mut nes_frame = 1u;
     mut time = 0.0;
-    mut clock = Clock::new();
+    mut clock = Instant::now();
     mut speed = 2.0;
     mut modify_speed = false;
     mut channels = [false; 5];
     @outer: loop {
-        fps_history[fpsi++ % fps_history.len()] = fps_clock.restart().as_seconds();
+        fps_history[fpsi++ % fps_history.len()] = fps_clock.restart().as_secs();
         if nes_frame % 60 == 0 {
             mut fps = 0.0;
             for v in fps_history.iter() {
@@ -224,10 +152,10 @@ fn main(): int {
                     }
                 }
                 :KeyDown(event) => {
-                    if KEYMAP.get(&event.scancode) is ?btn {
+                    if keymap.get(&event.scancode) is ?btn {
                         nes.input().press(*btn, 0);
                         nes.input().press(*btn, 1);
-                    } else if CHANNELS.get(&event.scancode) is ?channel {
+                    } else if channel_hotkeys.get(&event.scancode) is ?channel {
                         channels[*channel as u8] = nes.toggle_channel_mute(*channel);
                         print_channels(channels);
                     }
@@ -274,7 +202,7 @@ fn main(): int {
                     }
                 }
                 :KeyUp(event) => {
-                    if KEYMAP.get(&event.scancode) is ?btn {
+                    if keymap.get(&event.scancode) is ?btn {
                         nes.input().release(*btn, 0);
                         nes.input().release(*btn, 1);
                     } else if event.scancode is :Num1 {
@@ -284,7 +212,7 @@ fn main(): int {
             }
         }
 
-        time += clock.restart().as_seconds();
+        time += clock.restart().as_secs();
 
         let frametime = 1.0 / 60.0 / (modify_speed.then_some(speed) ?? 1.0);
         if time >= frametime {
@@ -303,6 +231,4 @@ fn main(): int {
         eprintln("Saved prg_ram to '{save_path}'");
         write_bytes(save_path, nes.sram());
     }
-
-    0
 }
