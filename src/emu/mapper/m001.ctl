@@ -1,8 +1,8 @@
 use ctlness::emu::cart::*;
 
 packed struct Control {
-    mirroring: u2 = 0b01,
-    prg_mode: u2 = 0b10,
+    mirroring: u2 = 0b00,
+    prg_mode: u2 = 0b11,
     chr_mode: u1 = 0,
 
     pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
