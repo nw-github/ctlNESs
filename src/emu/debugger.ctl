@@ -11,22 +11,21 @@ pub union Instr {
     Abs(u16, ?str), // $0000, X
     Imp(?str),
 
-    fn implied(mnemonic: str): This {
-        Instr::Imp(mnemonic:, null)
-    }
+    fn implied(mnemonic: str): This => Instr::Imp(mnemonic:, null);
 
-    pub fn decode(bus: *CpuBus, pc: u16): This {
-        Decoder(bus:, pc:).next(pc)
+    pub fn decode(bus: *CpuBus, pc: u16): (This, u16) {
+        mut dc = Decoder(bus:, pc:);
+        let ins = dc.next();
+        (ins, dc.pc - pc)
     }
 }
 
-struct Decoder {
-    bus: *CpuBus,
-    pc: u16,
+pub struct Decoder {
+    pub bus: *CpuBus,
+    pub pc: u16,
 
-    fn next(mut this, pc: u16): Instr {
-        this.pc = pc + 1;
-        match this.bus.peek(pc) {
+    pub fn next(mut this): Instr {
+        match this.read() {
             0x00 => this.brk(),
             0x01 => this.arithmetic(Load::Izx, Operation::Or),
             0x05 => this.arithmetic(Load::Zp, Operation::Or),
@@ -182,45 +181,49 @@ struct Decoder {
         }
     }
 
-    fn load_ins(this, mnemonic: str, load: Load): Instr {
+    fn read(mut this): u8 => this.bus.peek(this.pc++);
+
+    fn read_u16(mut this): u16 => this.bus.peek_u16(std::mem::replace(&mut this.pc, this.pc + 2));
+
+    fn load_ins(mut this, mnemonic: str, load: Load): Instr {
         match load {
-            Load::Imm => Instr::Imm(mnemonic:, this.bus.peek(this.pc)),
-            Load::Zp  => Instr::Zp(mnemonic:, this.bus.peek(this.pc), null),
-            Load::Zpx => Instr::Zp(mnemonic:, this.bus.peek(this.pc), "X"),
-            Load::Zpy => Instr::Zp(mnemonic:, this.bus.peek(this.pc), "Y"),
-            Load::Abs => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), null),
-            Load::Abx => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), "X"),
-            Load::Aby => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), "Y"),
-            Load::Izx => Instr::Izx(mnemonic:, this.bus.peek(this.pc)),
-            Load::Izy => Instr::Izy(mnemonic:, this.bus.peek(this.pc)),
+            Load::Imm => Instr::Imm(mnemonic:, this.read()),
+            Load::Zp  => Instr::Zp(mnemonic:, this.read(), null),
+            Load::Zpx => Instr::Zp(mnemonic:, this.read(), "X"),
+            Load::Zpy => Instr::Zp(mnemonic:, this.read(), "Y"),
+            Load::Abs => Instr::Abs(mnemonic:, this.read_u16(), null),
+            Load::Abx => Instr::Abs(mnemonic:, this.read_u16(), "X"),
+            Load::Aby => Instr::Abs(mnemonic:, this.read_u16(), "Y"),
+            Load::Izx => Instr::Izx(mnemonic:, this.read()),
+            Load::Izy => Instr::Izy(mnemonic:, this.read()),
         }
     }
 
-    fn store_ins(this, mnemonic: str, store: Store): Instr {
+    fn store_ins(mut this, mnemonic: str, store: Store): Instr {
         match store {
-            Store::Zp  => Instr::Zp(mnemonic:, this.bus.peek(this.pc), null),
-            Store::Zpx => Instr::Zp(mnemonic:, this.bus.peek(this.pc), "X"),
-            Store::Zpy => Instr::Zp(mnemonic:, this.bus.peek(this.pc), "Y"),
-            Store::Abs => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), null),
-            Store::Abx => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), "X"),
-            Store::Aby => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), "Y"),
-            Store::Izx => Instr::Izx(mnemonic:, this.bus.peek(this.pc)),
-            Store::Izy => Instr::Izy(mnemonic:, this.bus.peek(this.pc)),
+            Store::Zp  => Instr::Zp(mnemonic:, this.read(), null),
+            Store::Zpx => Instr::Zp(mnemonic:, this.read(), "X"),
+            Store::Zpy => Instr::Zp(mnemonic:, this.read(), "Y"),
+            Store::Abs => Instr::Abs(mnemonic:, this.read_u16(), null),
+            Store::Abx => Instr::Abs(mnemonic:, this.read_u16(), "X"),
+            Store::Aby => Instr::Abs(mnemonic:, this.read_u16(), "Y"),
+            Store::Izx => Instr::Izx(mnemonic:, this.read()),
+            Store::Izy => Instr::Izy(mnemonic:, this.read()),
         }
     }
 
-    fn inc_load_ins(this, mnemonic: str, load: IncLoad): Instr {
+    fn inc_load_ins(mut this, mnemonic: str, load: IncLoad): Instr {
         match load {
-            IncLoad::Zp  => Instr::Zp(mnemonic:, this.bus.peek(this.pc), null),
-            IncLoad::Zpx => Instr::Zp(mnemonic:, this.bus.peek(this.pc), "X"),
-            IncLoad::Abs => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), null),
-            IncLoad::Abx => Instr::Abs(mnemonic:, this.bus.peek_u16(this.pc), "X"),
+            IncLoad::Zp  => Instr::Zp(mnemonic:, this.read(), null),
+            IncLoad::Zpx => Instr::Zp(mnemonic:, this.read(), "X"),
+            IncLoad::Abs => Instr::Abs(mnemonic:, this.read_u16(), null),
+            IncLoad::Abx => Instr::Abs(mnemonic:, this.read_u16(), "X"),
         }
     }
 
     // ------
 
-    fn load(this, reg: Reg, load: Load): Instr {
+    fn load(mut this, reg: Reg, load: Load): Instr {
         this.load_ins(load:, mnemonic: match reg {
             Reg::A => "LDA",
             Reg::X => "LDX",
@@ -229,7 +232,7 @@ struct Decoder {
         })
     }
 
-    fn store(this, reg: Reg, store: Store): Instr {
+    fn store(mut this, reg: Reg, store: Store): Instr {
         this.store_ins(store:, mnemonic: match reg {
             Reg::A => "STA",
             Reg::X => "STX",
@@ -238,7 +241,7 @@ struct Decoder {
         })
     }
 
-    fn transfer(this, kw src: Reg, kw dst: Reg): Instr {
+    fn transfer(mut this, kw src: Reg, kw dst: Reg): Instr {
         Instr::implied(match (src, dst) {
             (Reg::A, Reg::X) => "TAX",
             (Reg::X, Reg::A) => "TXA",
@@ -250,7 +253,7 @@ struct Decoder {
         })
     }
 
-    fn arithmetic(this, load: Load, op: Operation): Instr {
+    fn arithmetic(mut this, load: Load, op: Operation): Instr {
         this.load_ins(load:, mnemonic: match op {
             Operation::Adc => "ADC",
             Operation::Sbc => "SBC",
@@ -260,7 +263,7 @@ struct Decoder {
         })
     }
 
-    fn shift(this, load: ?IncLoad, typ: Shift): Instr {
+    fn shift(mut this, load: ?IncLoad, typ: Shift): Instr {
         match (typ, load) {
             (Shift::Asl, ?load) => this.inc_load_ins("ASL", load),
             (Shift::Lsr, ?load) => this.inc_load_ins("LSR", load),
@@ -274,7 +277,7 @@ struct Decoder {
         }
     }
 
-    fn cmp(this, reg: Reg, load: Load): Instr {
+    fn cmp(mut this, reg: Reg, load: Load): Instr {
         this.load_ins(load:, mnemonic: match reg {
             Reg::A => "CMP",
             Reg::X => "CPX",
@@ -283,11 +286,11 @@ struct Decoder {
         })
     }
 
-    fn inc_dec(this, kw dec: bool, typ: IncLoad): Instr {
+    fn inc_dec(mut this, kw dec: bool, typ: IncLoad): Instr {
         this.inc_load_ins(if dec { "DEC" } else { "INC" }, typ)
     }
 
-    fn inc_dec_reg(this, reg: Reg, kw dec: bool): Instr {
+    fn inc_dec_reg(mut this, reg: Reg, kw dec: bool): Instr {
         Instr::implied(match (reg, dec) {
             (Reg::X, false) => "INX",
             (Reg::X, true) => "DEX",
@@ -297,7 +300,7 @@ struct Decoder {
         })
     }
 
-    fn flag(this, flag: Flag, val: bool): Instr {
+    fn flag(mut this, flag: Flag, val: bool): Instr {
         Instr::implied(match (flag, val) {
             (Flag::Carry, true) => "SEC",
             (Flag::Carry, false) => "CLC",
@@ -310,7 +313,7 @@ struct Decoder {
         })
     }
 
-    fn pull(this, dst: Reg): Instr {
+    fn pull(mut this, dst: Reg): Instr {
         Instr::implied(match dst {
             Reg::A => "PLA",
             Reg::P => "PLP",
@@ -318,7 +321,7 @@ struct Decoder {
         })
     }
 
-    fn push_reg(this, reg: Reg): Instr {
+    fn push_reg(mut this, reg: Reg): Instr {
         Instr::implied(match reg {
             Reg::A => "PHA",
             Reg::P => "PHP",
@@ -326,7 +329,7 @@ struct Decoder {
         })
     }
 
-    fn branch(this, flag: Flag, enable: bool): Instr {
+    fn branch(mut this, flag: Flag, enable: bool): Instr {
         let mnemonic = match (flag, enable) {
             (Flag::Negative, false) => "BPL",
             (Flag::Negative, true) => "BMI",
@@ -339,33 +342,31 @@ struct Decoder {
             _ => panic("invalid branch instruction"),
         };
 
-        let offset = this.bus.peek(this.pc) as u16;
+        let offset = this.read() as u16;
         let pc = this.pc.wrapping_add(if offset > 0x7f { offset | 0xff00 } else { offset });
         Instr::Abs(mnemonic:, pc.wrapping_add(1), null)
     }
 
-    fn jsr(this): Instr {
-        Instr::Abs(mnemonic: "JSR", this.bus.peek_u16(this.pc), null)
-    }
+    fn jsr(mut this): Instr => Instr::Abs(mnemonic: "JSR", this.read_u16(), null);
 
-    fn jmp(this, kw ind: bool): Instr {
+    fn jmp(mut this, kw ind: bool): Instr {
         if ind {
-            Instr::Ind(mnemonic: "JMP", this.bus.peek_u16(this.pc))
+            Instr::Ind(mnemonic: "JMP", this.read_u16())
         } else {
-            Instr::Abs(mnemonic: "JMP", this.bus.peek_u16(this.pc), null)
+            Instr::Abs(mnemonic: "JMP", this.read_u16(), null)
         }
     }
 
-    fn bit(this, kw zp: bool): Instr {
+    fn bit(mut this, kw zp: bool): Instr {
         if zp {
-            Instr::Zp(mnemonic: "BIT", this.bus.peek(this.pc), null)
+            Instr::Zp(mnemonic: "BIT", this.read(), null)
         } else {
-            Instr::Abs(mnemonic: "BIT", this.bus.peek_u16(this.pc), null)
+            Instr::Abs(mnemonic: "BIT", this.read_u16(), null)
         }
     }
 
-    fn brk(this): Instr { Instr::implied("BRK") }
-    fn rti(this): Instr { Instr::implied("RTI") }
-    fn rts(this): Instr { Instr::implied("RTS") }
-    fn nop(this): Instr { Instr::implied("NOP") }
+    fn brk(this): Instr => Instr::implied("BRK");
+    fn rti(this): Instr => Instr::implied("RTI");
+    fn rts(this): Instr => Instr::implied("RTS");
+    fn nop(this): Instr => Instr::implied("NOP");
 }

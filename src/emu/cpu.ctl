@@ -97,7 +97,7 @@ pub struct Cpu {
 
         this.cycles = 0;
         if this.nmi_pending or this.irq_pending {
-            let typ = if this.nmi_pending { Interrupt::Nmi } else { Interrupt::Irq };
+            let typ = this.nmi_pending then Interrupt::Nmi else Interrupt::Irq;
             this.nmi_pending = false;
             this.irq_pending = false;
             return this.interrupt(typ);
@@ -255,7 +255,7 @@ pub struct Cpu {
             0xf9 => this.arithmetic(Load::Aby, Operation::Sbc),
             0xfd => this.arithmetic(Load::Abx, Operation::Sbc),
             0xfe => this.inc_dec(dec: false, IncLoad::Abx),
-            op => eprintln("invalid opcode {op:#x}, reading at {this.pc.wrapping_sub(1):#x}"),
+            op => eprintln("invalid opcode {op:#X}, reading at {this.pc.wrapping_sub(1):#X}"),
         }
     }
 
@@ -621,25 +621,29 @@ pub struct Cpu {
 
     impl std::fmt::Format {
         fn fmt(this, f: *mut std::fmt::Formatter) {
-            let ins = super::debugger::Instr::decode(&this.bus, this.pc);
-            mut buf = "{this.pc:#06x}  \x1b[32m{ins.mnemonic}\x1b[0m ".to_str();
-            mut pad = 40u16;
+            let (ins, len) = super::debugger::Instr::decode(bus: &this.bus, pc: this.pc);
+            mut buf = "\x1b[90m${this.pc:04X}\x1b[0m  \x1b[32m{ins.mnemonic}\x1b[0m ".to_str();
+            mut pad = 50u16;
             match ins {
                 :Imp(?reg)      => { buf += reg; pad -= 9; },
-                :Imm(val)       => buf += "\x1b[35m#${val:02x}\x1b[0m".to_str(),
-                :Zp(val, ?reg)  => buf += "\x1b[34m${val:02x}\x1b[0m, {reg}".to_str(),
-                :Zp(val, null)  => buf += "\x1b[34m${val:02x}\x1b[0m".to_str(),
-                :Izx(val)       => buf += "(\x1b[36m${val:02x}\x1b[0m, X)".to_str(),
-                :Izy(val)       => buf += "(\x1b[36m${val:02x}\x1b[0m), Y".to_str(),
-                :Ind(val)       => buf += "(\x1b[36m${val:04x}\x1b[0m)".to_str(),
-                :Abs(val, ?reg) => buf += "\x1b[36m${val:04x}\x1b[0m, {reg}".to_str(),
-                :Abs(val, null) => buf += "\x1b[36m${val:04x}\x1b[0m".to_str(),
+                :Imm(val)       => buf += "\x1b[35m#${val:02X}\x1b[0m".to_str(),
+                :Zp(val, ?reg)  => buf += "\x1b[34m${val:02X}\x1b[0m, {reg}".to_str(),
+                :Zp(val, null)  => buf += "\x1b[34m${val:02X}\x1b[0m".to_str(),
+                :Izx(val)       => buf += "(\x1b[36m${val:02X}\x1b[0m, X)".to_str(),
+                :Izy(val)       => buf += "(\x1b[36m${val:02X}\x1b[0m), Y".to_str(),
+                :Ind(val)       => buf += "(\x1b[36m${val:04X}\x1b[0m)".to_str(),
+                :Abs(val, ?reg) => buf += "\x1b[36m${val:04X}\x1b[0m, {reg}".to_str(),
+                :Abs(val, null) => buf += "\x1b[36m${val:04X}\x1b[0m".to_str(),
                 _ => pad -= 9,
             }
 
-            write(f, "{buf:<pad$}; A: \x1b[31m{this.a:02x}\x1b[0m X: \x1b[33m{
-                this.x:02x}\x1b[0m Y: \x1b[34m{this.y:02x}\x1b[0m S: \x1b[35m{
-                this.s:02x}\x1b[0m P: [\x1b[36m{this.p}\x1b[0m]");
+            write(f, "{buf:<pad$}; A: \x1b[31m{this.a:02X}\x1b[0m X: \x1b[33m{
+                this.x:02X}\x1b[0m Y: \x1b[34m{this.y:02X}\x1b[0m S: \x1b[35m{
+                this.s:02X}\x1b[0m P: [\x1b[36m{this.p}\x1b[0m] ;\x1b[90m");
+            for i in 0u16..len {
+                write(f, " {this.bus.peek(addr: this.pc + i):02X}");
+            }
+            write(f, "\x1b[0m");
         }
     }
 }
@@ -695,7 +699,7 @@ pub struct CpuBus {
             0x4015 => this.apu.write_status(this, val),
             0x4016 => if val & 1 != 0 { this.poll_input = this.ipt.raw_state(); }
             0x4017 => this.apu.write_frame_counter(val),
-            ..0x6000 => eprintln("attempt to write to expansion ROM at {addr:#x}"),
+            ..0x6000 => eprintln("attempt to write to expansion ROM at {addr:#X}"),
             ..0x8000 => this.prg_ram[addr - 0x6000] = val,
             _ => this.mapper.write_prg(addr, val),
         }
@@ -722,7 +726,7 @@ pub struct CpuBus {
                 res
             }
             ..0x6000 => {
-                eprintln("attempt to read from expansion ROM at {addr:#x}");
+                eprintln("attempt to read from expansion ROM at {addr:#X}");
                 this.open_bus()
             },
             ..0x8000 => this.prg_ram[addr - 0x6000],
