@@ -343,8 +343,8 @@ pub struct Decoder {
         };
 
         let offset = this.read() as u16;
-        let pc = this.pc.wrapping_add(if offset > 0x7f { offset | 0xff00 } else { offset });
-        Instr::Abs(mnemonic:, pc.wrapping_add(1), null)
+        let target = this.pc.wrapping_add(offset > 0x7f then offset | 0xff00 else offset);
+        Instr::Abs(mnemonic:, target, null)
     }
 
     fn jsr(mut this): Instr => Instr::Abs(mnemonic: "JSR", this.read_u16(), null);

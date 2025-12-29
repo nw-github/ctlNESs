@@ -76,9 +76,7 @@ pub struct Cpu {
     pub nmi_pending: bool = false,
     pub irq_pending: bool = false,
 
-    pub fn new(mut bus: CpuBus): This {
-        Cpu(pc: bus.read_u16(0xfffc), bus:)
-    }
+    pub fn new(mut bus: CpuBus): This => Cpu(pc: bus.read_u16(0xfffc), bus:);
 
     pub fn step(mut this, dmc_stall: bool) {
         if dmc_stall {
@@ -561,7 +559,7 @@ pub struct Cpu {
         let offset = this.read() as u16;
         if this.p.get(flag) == enable {
             let page = this.pc >> 8;
-            this.pc = this.pc.wrapping_add(if offset > 0x7f { offset | 0xff00 } else { offset });
+            this.pc = this.pc.wrapping_add(offset > 0x7f then offset | 0xff00 else offset);
             this.cycles += 3 + (page != this.pc >> 8) as u64;
         } else {
             this.cycles += 2;
