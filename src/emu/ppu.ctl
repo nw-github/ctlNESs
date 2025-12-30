@@ -1,6 +1,13 @@
-use super::mapper::Mapper;
-use super::cart::Mirroring;
+use super::bus::*;
 use ctlness::sdl::Color;
+
+pub union Mirroring {
+    Horizontal,
+    Vertical,
+    FourScreen,
+    OneScreenA,
+    OneScreenB,
+}
 
 pub const HPIXELS: uint = 256;
 pub const VPIXELS: uint = 240;
@@ -17,7 +24,7 @@ packed struct Ctrl {
     nmi_enable: bool = false,
 
     pub fn increment(this): u16 => this.inc then 32 else 1;
-    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
+    pub fn from_u8(val: u8): This => unsafe std::mem::bit_cast(val);
 }
 
 packed struct Mask {
@@ -30,7 +37,7 @@ packed struct Mask {
     emphasize_green: bool = false,
     emphasize_blue: bool = false,
 
-    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
+    pub fn from_u8(val: u8): This => unsafe std::mem::bit_cast(val);
 }
 
 union State {
@@ -38,12 +45,6 @@ union State {
     Render,
     PostRender,
     VBlank,
-}
-
-pub union PpuResult {
-    Draw,
-    VblankNmi,
-    None,
 }
 
 struct Sprite {
@@ -57,6 +58,7 @@ pub struct Ppu {
     pub buf: [mut u32..] = @[0u32; HPIXELS * VPIXELS][..],
 
     mapper: *dyn mut Mapper,
+    dma_flag: *mut bool,
     palette: [u8; 0x20] = [0; 0x20],
     ram: [u8; 0x800] = [0; 0x800],
     oam: [Sprite; 64] = [Sprite(); 64],
@@ -81,7 +83,7 @@ pub struct Ppu {
     oam_addr: u8 = 0,
     data_buf: u8 = 0,
 
-    pub fn new(mapper: *dyn mut Mapper): This => Ppu(mapper:);
+    pub fn new(mapper: *dyn mut Mapper, dma_flag: *mut bool): This => Ppu(mapper:, dma_flag:);
 
     pub fn reset(mut this) {
         this.cycle = 0;
@@ -93,8 +95,8 @@ pub struct Ppu {
         this.w = false;
     }
 
-    pub fn step(mut this): PpuResult {
-        mut result = PpuResult::None;
+    pub fn step(mut this, nmi: *mut bool): bool {
+        mut result = false;
         match this.state {
             :PreRender => {
                 let rendering_on = this.mask.show_bg and this.mask.show_sprites;
@@ -120,14 +122,14 @@ pub struct Ppu {
                     this.scanline++;
                     this.cycle = 0;
                     this.state = :VBlank;
-                    result = :Draw;
+                    result = true;
                 }
             }
             :VBlank => {
                 if this.cycle == 1 and this.scanline == VPIXELS as! u16 + 1 {
                     this.vblank = true;
                     if this.ctrl.nmi_enable {
-                        result = :VblankNmi;
+                        *nmi = true;
                     }
                 }
                 if this.cycle >= SCANLINE_END_CYCLE {
@@ -159,14 +161,14 @@ pub struct Ppu {
             if show_bg {
                 let x_fine = (this.x as u16 + x) % 8;
                 if this.mask.show_bg_l8 or x >= 8 {
-                    let tile = this.read((this.v & 0xfff) | 0x2000) as u16;
+                    let tile = this.ppu_read((this.v & 0xfff) | 0x2000) as u16;
                     let addr = (tile * 16 + ((this.v >> 12) & 0x7)) | (this.ctrl.bg_tile_addr as u16 << 12);
 
-                    bg_color = (this.read(addr) >> (x_fine ^ 7)) & 1;
-                    bg_color |= ((this.read(addr + 8) >> (x_fine ^ 7)) & 1) << 1;
+                    bg_color = (this.ppu_read(addr) >> (x_fine ^ 7)) & 1;
+                    bg_color |= ((this.ppu_read(addr + 8) >> (x_fine ^ 7)) & 1) << 1;
                     bg_opaque = bg_color != 0;
 
-                    let attr = this.read(
+                    let attr = this.ppu_read(
                         0x23c0 | (this.v & 0xc00) | ((this.v >> 4) & 0x38) | ((this.v >> 2) & 0x7)
                     );
                     let shift = ((this.v >> 4) & 4) | (this.v & 2);
@@ -208,8 +210,8 @@ pub struct Ppu {
                         ((tile >> 1) * 32 + y_offs) | ((tile & 1) << 12)
                     };
 
-                    spr_color |= (this.read(addr) >> x_shift) & 1;
-                    spr_color |= ((this.read(addr + 8) >> x_shift) & 1) << 1;
+                    spr_color |= (this.ppu_read(addr) >> x_shift) & 1;
+                    spr_color |= ((this.ppu_read(addr + 8) >> x_shift) & 1) << 1;
                     spr_opaque = spr_color != 0;
                     if !spr_opaque {
                         continue;
@@ -234,7 +236,7 @@ pub struct Ppu {
                 bg_color
             };
 
-            mut idx = this.read(0x3f00 + (palette as u16));
+            mut idx = this.ppu_read(0x3f00 + (palette as u16));
             if idx as uint >= PALETTE.len() {
                 // eprintln("attempt to render bad palette index {idx}");
                 idx = 0;
@@ -291,7 +293,7 @@ pub struct Ppu {
     }
 
     // r $2002
-    pub fn read_status(mut this): u8 {
+    fn read_status(mut this): u8 {
         let status = this.peek_status();
         this.vblank = false;
         this.w = false;
@@ -299,16 +301,16 @@ pub struct Ppu {
     }
 
     // r $2002
-    pub fn peek_status(this): u8 {
+    fn peek_status(this): u8 {
         // TODO: lower 5 bits should be PPU open bus
         this.vblank as u8 << 7 | this.spr_zero_hit as u8 << 6 | this.spr_overflow as u8 << 5
     }
 
     // r $2004
-    pub fn read_oam(this): u8 => this.oam_bytes()[this.oam_addr];
+    fn read_oam(this): u8 => this.oam_bytes()[this.oam_addr];
 
     // r $2007
-    pub fn read_data(mut this): u8 {
+    fn read_data(mut this): u8 {
         let val = this.peek_data();
         defer this.v += this.ctrl.increment();
         // reads from anywhere except palette memory are delayed by one
@@ -320,31 +322,31 @@ pub struct Ppu {
     }
 
     // r $2007
-    pub fn peek_data(this): u8 => this.read(this.v);
+    fn peek_data(this): u8 => this.ppu_read(this.v);
 
     // w $2000
-    pub fn write_ctrl(mut this, val: u8) {
+    fn write_ctrl(mut this, val: u8) {
         this.ctrl = Ctrl::from_u8(val);
         this.t = (this.t & !0xc00) | (this.ctrl.nametable_select as u16 << 10);
     }
 
     // w $2001
-    pub fn write_mask(mut this, val: u8) {
+    fn write_mask(mut this, val: u8) {
         this.mask = Mask::from_u8(val);
     }
 
     // w $2003
-    pub fn write_oam_addr(mut this, val: u8) {
+    fn write_oam_addr(mut this, val: u8) {
         this.oam_addr = val;
     }
 
     // w $2004
-    pub fn write_oam(mut this, val: u8) {
+    fn write_oam(mut this, val: u8) {
         this.oam_bytes_mut()[this.oam_addr++ as uint] = val;
     }
 
     // w $2005
-    pub fn write_scroll(mut this, val: u8) {
+    fn write_scroll(mut this, val: u8) {
         if !this.w {
             this.t = (this.t & !0x1f) | ((val as u16 >> 3) & 0x1f);
             this.x = val & 0x7;
@@ -356,7 +358,7 @@ pub struct Ppu {
     }
 
     // w $2006
-    pub fn write_addr(mut this, val: u8) {
+    fn write_addr(mut this, val: u8) {
         if !this.w {
             this.t = (this.t & !0xff00) | ((val as u16 & 0x3f) << 8);
         } else {
@@ -367,17 +369,17 @@ pub struct Ppu {
     }
 
     // w $2007
-    pub fn write_data(mut this, val: u8) {
-        this.write(this.v, val);
+    fn write_data(mut this, val: u8) {
+        this.ppu_write(this.v, val);
         this.v += this.ctrl.increment();
     }
 
     // w $4014
-    pub fn write_oam_dma(mut this, idx: u8, val: u8) {
+    fn write_oam_dma(mut this, idx: u8, val: u8) {
         this.oam_bytes_mut()[this.oam_addr.wrapping_add(idx) as uint] = val;
     }
 
-    fn read(this, addr: u16): u8 {
+    fn ppu_read(this, addr: u16): u8 {
         match addr {
             ..0x2000 => this.mapper.read_chr(addr),
             ..0x3f00 => {
@@ -399,7 +401,7 @@ pub struct Ppu {
         }
     }
 
-    fn write(mut this, addr: u16, val: u8) {
+    fn ppu_write(mut this, addr: u16, val: u8) {
         match addr {
             ..0x2000 => this.mapper.write_chr(addr, val),
             ..0x3f00 => {
@@ -449,6 +451,52 @@ pub struct Ppu {
             this.oam.as_raw_mut().cast(),
             this.oam.len() * std::mem::size_of::<Sprite>(),
         )
+    }
+
+    impl Mem {
+        fn peek(this, addr: u16): ?u8 {
+            if addr is 0x2000..0x4000 {
+                match addr & 0x2007 {
+                    0x2002 => this.peek_status(),
+                    0x2004 => this.read_oam(),
+                    0x2007 => this.peek_data(),
+                    _ => return null,
+                }
+            }
+        }
+
+        fn read(mut this, addr: u16): ?u8 {
+            if addr is 0x2000..0x4000 {
+                match addr & 0x2007 {
+                    0x2002 => this.read_status(),
+                    0x2004 => this.read_oam(),
+                    0x2007 => this.read_data(),
+                    _ => return null,
+                }
+            }
+        }
+
+        fn write(mut this, bus: *mut Bus, addr: u16, val: u8) {
+            match addr {
+                0x2000..0x4000 => match addr & 0x2007 {
+                    0x2000 => this.write_ctrl(val),
+                    0x2001 => this.write_mask(val),
+                    0x2003 => this.write_oam_addr(val),
+                    0x2004 => this.write_oam(val),
+                    0x2005 => this.write_scroll(val),
+                    0x2006 => this.write_addr(val),
+                    0x2007 => this.write_data(val),
+                    _ => {}
+                }
+                0x4014 => {
+                    for i in 0u8..=255 {
+                        this.write_oam_dma(i, bus.read((val as u16 << 8).wrapping_add(i as u16)));
+                    }
+                    *this.dma_flag = true;
+                }
+                _ => {}
+            }
+        }
     }
 }
 

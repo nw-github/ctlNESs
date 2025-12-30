@@ -13,6 +13,21 @@ pub struct Nrom {
         )
     }
 
+    impl super::Mem {
+        fn peek(this, addr: u16): ?u8 {
+            if addr >= 0x8000 {
+                let addr = this.one_bank then (addr - 0x8000) & 0x3fff else addr - 0x8000;
+                this.cart.prg_rom[addr]
+            }
+        }
+
+        fn write(mut this, _: *mut super::Bus, addr: u16, val: u8) {
+            if addr >= 0x8000 {
+                eprintln("attempt to write {val:#x} to rom at addr {addr:#x}");
+            }
+        }
+    }
+
     impl super::Mapper {
         fn peek_chr(this, addr: u16): u8 {
             if &this.chr_ram is ?chr_ram {
@@ -26,18 +41,6 @@ pub struct Nrom {
             if &mut this.chr_ram is ?chr_ram {
                 chr_ram[addr] = val;
             }
-        }
-
-        fn read_prg(this, addr: u16): u8 {
-            if this.one_bank {
-                this.cart.prg_rom[(addr - 0x8000) & 0x3fff]
-            } else {
-                this.cart.prg_rom[addr - 0x8000]
-            }
-        }
-
-        fn write_prg(mut this, addr: u16, val: u8) {
-            eprintln("attempt to write {val:#x} to rom at addr {addr:#x}");
         }
 
         fn mirroring(this): Mirroring => this.cart.mirroring;

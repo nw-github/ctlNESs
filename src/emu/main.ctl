@@ -1,101 +1,52 @@
-use super::sdl::Color;
-use cpu::Cpu;
-use cpu::CpuBus;
-use cart::Cart;
-
-pub union JoystickBtn {
-    A,
-    B,
-    Select,
-    Start,
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-pub union InputMode {
-    Nes,
-    AllowOpposing,
-    Keyboard,
-}
-
-pub struct Input {
-    data: [u8; 2] = [0; 2],
-    real: [u8; 2] = [0; 2],
-    pub mode: InputMode,
-
-    pub fn new(mode: InputMode): This => Input(mode:);
-
-    pub fn press(mut this, btn: JoystickBtn, controller: u1) {
-        this.data[controller] |= 1 << btn as u32;
-        this.real[controller] |= 1 << btn as u32;
-        if !(this.mode is InputMode::AllowOpposing) {
-            this.data[controller] &= !(1 << match btn {
-                JoystickBtn::Left => JoystickBtn::Right as u32,
-                JoystickBtn::Right => JoystickBtn::Left as u32,
-                JoystickBtn::Up => JoystickBtn::Down as u32,
-                JoystickBtn::Down => JoystickBtn::Up as u32,
-                _ => return,
-            });
-        }
-    }
-
-    pub fn release(mut this, btn: JoystickBtn, controller: u1) {
-        this.data[controller] &= !(1 << btn as u32);
-        this.real[controller] &= !(1 << btn as u32);
-        if this.mode is InputMode::Keyboard {
-            this.data[controller] |= this.real[controller] & (1 << match btn {
-                JoystickBtn::Left => JoystickBtn::Right as u32,
-                JoystickBtn::Right => JoystickBtn::Left as u32,
-                JoystickBtn::Up => JoystickBtn::Down as u32,
-                JoystickBtn::Down => JoystickBtn::Up as u32,
-                _ => return,
-            });
-        }
-    }
-
-    pub fn raw_state(this): [u8; 2] => this.data;
-}
-
 pub const NTSC_CLOCK_RATE: f64 = 1789772.6;
 
 pub struct Nes {
-    cpu: Cpu,
-    irq_pending: *mut bool,
+    cpu: cpu::Cpu,
+    bus: *mut bus::Bus,
+    apu: *mut apu::Apu,
+    ppu: *mut ppu::Ppu,
+    ipt: *mut ipt::Input,
+    sram: *mut bus::Ram,
+    mapper: *dyn mut bus::Mapper,
+    signals: *mut cpu::Signals,
     cycle: u64 = 0,
-    audio: [f64],
+    audio: [f64] = @[0.0; (NTSC_CLOCK_RATE * 0.02) as uint],
 
-    pub fn new(ipt_mode: InputMode, cart: Cart, prg_ram: ?[u8..]): Nes {
-        let irq_pending = std::alloc::new(false);
-        Nes(
-            cpu: Cpu::new(CpuBus::new(
-                pirq: irq_pending,
-                sram: prg_ram,
-                Input::new(ipt_mode),
-                match cart.mapper {
-                    0 => std::alloc::new(mapper::m000::Nrom::new(cart)),
-                    1 => std::alloc::new(mapper::m001::Mmc1::new(cart)),
-                    2 => std::alloc::new(mapper::m002::UxRom::new(cart)),
-                    4 => std::alloc::new(mapper::m004::Mmc3::new(cart, irq_pending)),
-                    9 => std::alloc::new(mapper::m009::Mmc2::new(cart)),
-                    i => panic("unsupported mapper: {i}"),
-                }),
-            ),
-            irq_pending:,
-            audio: @[0.0; (NTSC_CLOCK_RATE * 0.02) as uint],
-        )
+    pub fn new(cart: cart::Cart, ipt_mode: ipt::InputMode, prg_ram: ?[u8..]): Nes {
+        let signals = std::alloc::new(cpu::Signals());
+        let mapper: *dyn mut bus::Mapper = match cart.mapper {
+            0 => std::alloc::new(mapper::m000::Nrom::new(cart)),
+            1 => std::alloc::new(mapper::m001::Mmc1::new(cart)),
+            2 => std::alloc::new(mapper::m002::UxRom::new(cart)),
+            4 => std::alloc::new(mapper::m004::Mmc3::new(cart, &mut signals.irq_pending)),
+            9 => std::alloc::new(mapper::m009::Mmc2::new(cart)),
+            i => panic("unsupported mapper: {i}"),
+        };
+
+        let ipt = std::alloc::new(ipt::Input::new(ipt_mode));
+        let apu = std::alloc::new(apu::Apu::new(&mut signals.irq_pending));
+        let ppu = std::alloc::new(ppu::Ppu::new(mapper, &mut signals.dma_flag));
+        let ram = std::alloc::new(bus::Ram::new(0x800, 0x0000u16..0x2000));
+        let sram = std::alloc::new(bus::Ram::new(0x2000, 0x6000u16..0x8000));
+        if prg_ram is ?prg_ram and prg_ram.len() == sram.buf.len() {
+            sram.buf[..] = prg_ram;
+        }
+
+        let bus = std::alloc::new(bus::Bus::new(@[ram, ppu, apu, ipt, sram, mapper]));
+        let cpu = cpu::Cpu::new(bus, signals);
+        Nes(cpu:, apu:, ppu:, bus:, ipt:, sram:, signals:, mapper:)
     }
 
     pub fn reset(mut this) {
         this.cpu.reset();
-        this.cpu.bus.reset();
-        *this.irq_pending = false;
+        this.apu.reset();
+        this.ppu.reset();
+        this.mapper.reset();
     }
 
-    pub fn input(mut this): *mut Input => &mut this.cpu.bus.ipt;
+    pub fn input(mut this): *mut ipt::Input => this.ipt;
 
-    pub fn video_buffer(this): [u32..] => this.cpu.bus.ppu.buf;
+    pub fn video_buffer(this): [u32..] => this.ppu.buf;
 
     pub fn audio_buffer(mut this): [f64..] {
         let buf = this.audio[..];
@@ -103,29 +54,19 @@ pub struct Nes {
         buf
     }
 
-    pub fn sram(this): [u8..] => this.cpu.bus.sram();
+    pub fn sram(this): [u8..] => this.sram.buf;
 
     pub fn cycle(mut this): bool {
-        let result = this.cpu.bus.ppu.step();
-        if result is :VblankNmi {
-            this.cpu.nmi_pending = true;
-        }
-
-        if this.cycle % 3 == 0 {
-            let dmc_stall = this.cpu.bus.apu.step(&mut this.cpu.bus);
-            this.audio.push(this.cpu.bus.apu.output());
-            if std::mem::replace(this.irq_pending, false) {
-                this.cpu.irq_pending = true;
-            }
-
+        let draw = this.ppu.step(&mut this.signals.nmi_pending);
+        if this.cycle++ % 3 == 0 {
+            let dmc_stall = this.apu.step(this.bus);
+            this.audio.push(this.apu.output());
             this.cpu.step(dmc_stall);
         }
-
-        this.cycle++;
-        result is :Draw
+        draw
     }
 
     pub fn toggle_channel_mute(mut this, channel: apu::Channel): bool {
-        this.cpu.bus.apu.toggle_channel_mute(channel)
+        this.apu.toggle_channel_mute(channel)
     }
 }

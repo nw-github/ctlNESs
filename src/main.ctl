@@ -1,6 +1,8 @@
 use sdl::*;
 use utils::*;
-use emu::*;
+use emu::ipt::*;
+use emu::Nes;
+use emu::ppu;
 use emu::cart::Cart;
 use emu::apu::Channel;
 use std::time::Instant;
@@ -101,7 +103,7 @@ fn main() {
         eprintln("Loaded {save.len()} byte save from '{save_path}'");
         save[..]
     };
-    mut nes = Nes::new(InputMode::Nes, cart, save);
+    mut nes = Nes::new(cart, InputMode::Nes, save);
     guard Audio::new(sample_rate: SAMPLE_RATE) is ?mut audio else {
         std::proc::fatal("Error occurred while initializing SDL Audio: {sdl::get_last_error()}");
     }
@@ -163,8 +165,8 @@ fn main() {
                         :R => {
                             if event.modifiers & (0x40 | 0x80) != 0 {
                                 nes = Nes::new(
-                                    nes.input().mode,
                                     cart,
+                                    nes.input().mode,
                                     cart.has_battery.then_some(nes.sram()),
                                 );
                                 println("executed hard reset");

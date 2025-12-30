@@ -6,7 +6,7 @@ packed struct Control {
     prg_inversion: bool = false,
     chr_inversion: bool = false,
 
-    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
+    pub fn from_u8(val: u8): This => unsafe std::mem::bit_cast(val);
 }
 
 pub struct Mmc3 {
@@ -44,23 +44,10 @@ pub struct Mmc3 {
         )
     }
 
-    impl super::Mapper {
-        fn peek_chr(this, addr: u16): u8 {
-            match addr {
-                ..0x1fff => this.cart.chr_rom[this.chr_banks[addr >> 10] + (addr & 0x3ff) as uint],
-                ..=0x2fff => this.mirroring_ram[addr - 0x2000],
-                _ => 0,
-            }
-        }
-
-        fn write_chr(mut this, addr: u16, val: u8) {
-            if addr is 0x2000..=0x2fff {
-                this.mirroring_ram[addr - 0x2000] = val;
-            }
-        }
-
-        fn read_prg(this, addr: u16): u8 {
+    impl super::Mem {
+        fn peek(this, addr: u16): ?u8 {
             let bank = match addr {
+                ..0x8000 => return null,
                 ..=0x9fff => 0,
                 ..=0xbfff => 1,
                 ..=0xdfff => 2,
@@ -69,8 +56,9 @@ pub struct Mmc3 {
             this.cart.prg_rom[this.prg_banks[bank]..][addr & 0x1fff]
         }
 
-        fn write_prg(mut this, addr: u16, val: u8) {
+        fn write(mut this, _: *mut super::Bus, addr: u16, val: u8) {
             match addr {
+                ..0x8000 => return,
                 ..=0x9fff => {
                     guard addr & 1 != 0 else {
                         this.ctrl = Control::from_u8(val);
@@ -131,6 +119,22 @@ pub struct Mmc3 {
                     // acknowledge any pending interrupts.
                     this.irq_enabled = addr & 1 != 0;
                 }
+            }
+        }
+    }
+
+    impl super::Mapper {
+        fn peek_chr(this, addr: u16): u8 {
+            match addr {
+                ..0x1fff => this.cart.chr_rom[this.chr_banks[addr >> 10] + (addr & 0x3ff) as uint],
+                ..=0x2fff => this.mirroring_ram[addr - 0x2000],
+                _ => 0,
+            }
+        }
+
+        fn write_chr(mut this, addr: u16, val: u8) {
+            if addr is 0x2000..=0x2fff {
+                this.mirroring_ram[addr - 0x2000] = val;
             }
         }
 

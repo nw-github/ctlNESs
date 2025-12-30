@@ -1,3 +1,4 @@
+use super::bus::*;
 use super::cpu::*;
 
 pub union Instr {
@@ -13,7 +14,7 @@ pub union Instr {
 
     fn implied(mnemonic: str): This => Instr::Imp(mnemonic:, null);
 
-    pub fn decode(bus: *CpuBus, pc: u16): (This, u16) {
+    pub fn decode(bus: *Bus, pc: u16): (This, u16) {
         mut dc = Decoder(bus:, pc:);
         let ins = dc.next();
         (ins, dc.pc - pc)
@@ -21,7 +22,7 @@ pub union Instr {
 }
 
 pub struct Decoder {
-    pub bus: *CpuBus,
+    pub bus: *Bus,
     pub pc: u16,
 
     pub fn next(mut this): Instr {

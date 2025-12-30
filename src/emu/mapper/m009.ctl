@@ -9,6 +9,31 @@ pub struct Mmc2 {
 
     pub fn new(cart: Cart): This => Mmc2(mirroring: cart.mirroring, cart:);
 
+    impl super::Mem {
+        fn peek(this, addr: u16): ?u8 {
+            if addr >= 0x8000 {
+                if addr < 0xa000 {
+                    this.cart.prg_rom[this.prg_bank..][addr - 0x8000]
+                } else {
+                    this.cart.prg_rom[this.cart.prg_rom.len() - 0x2000 * 3..][addr - 0xa000]
+                }
+            }
+        }
+
+        fn write(mut this, _: *mut super::Bus, addr: u16, val: u8) {
+            match addr {
+                0xa000..=0xafff => this.prg_bank = (val & 0xf) as uint * 0x2000,
+                0xb000..=0xefff => {
+                    this.chr_banks[(addr - 0xb000) >> 12] = (val & 0x1f) as uint * 0x1000;
+                }
+                0xf000..=0xffff => {
+                    this.mirroring = val & 1 == 0 then :Vertical else :Horizontal;
+                }
+                _ => {}
+            }
+        }
+    }
+
     impl super::Mapper {
         fn read_chr(mut this, addr: u16): u8 {
             let val = this.peek_chr(addr);
@@ -26,27 +51,6 @@ pub struct Mmc2 {
         }
 
         fn write_chr(mut this, _addr: u16, _val: u8) { }
-
-        fn read_prg(this, addr: u16): u8 {
-            if addr < 0xa000 {
-                this.cart.prg_rom[this.prg_bank..][addr - 0x8000]
-            } else {
-                this.cart.prg_rom[this.cart.prg_rom.len() - 0x2000 * 3..][addr - 0xa000]
-            }
-        }
-
-        fn write_prg(mut this, addr: u16, val: u8) {
-            match addr {
-                0xa000..=0xafff => this.prg_bank = (val & 0xf) as uint * 0x2000,
-                0xb000..=0xefff => {
-                    this.chr_banks[(addr - 0xb000) >> 12] = (val & 0x1f) as uint * 0x1000;
-                }
-                0xf000..=0xffff => {
-                    this.mirroring = val & 1 == 0 then :Vertical else :Horizontal;
-                }
-                _ => {}
-            }
-        }
 
         fn mirroring(this): Mirroring => this.mirroring;
 

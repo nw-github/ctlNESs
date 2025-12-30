@@ -1,7 +1,4 @@
-use super::ppu::Ppu;
-use super::apu::Apu;
-use super::mapper::Mapper;
-use super::Input;
+use super::bus::Bus;
 
 pub union Load { Imm, Zp, Zpx, Zpy, Abs, Abx, Aby, Izx, Izy }
 pub union Store { Zp, Zpx, Zpy, Abs, Abx, Aby, Izx, Izy }
@@ -22,9 +19,7 @@ packed struct Flags {
     negative: bool = false,
 
     @(inline(always))
-    pub fn get(my this, bit: Flag): bool {
-        (this.into_u8() >> bit as u8) & 1 != 0
-    }
+    pub fn get(my this, bit: Flag): bool => (this.into_u8() >> bit as u8) & 1 != 0;
 
     @(inline(always))
     pub fn set(mut this, bit: Flag, val: bool) {
@@ -35,13 +30,9 @@ packed struct Flags {
         }
     }
 
-    pub fn into_u8(my this): u8 {
-        unsafe std::mem::transmute(this)
-    }
+    pub fn into_u8(my this): u8 => unsafe std::mem::bit_cast(this);
 
-    pub fn as_u8_mut(mut this): *mut u8 {
-        unsafe this as *mut u8
-    }
+    pub fn as_u8_mut(mut this): *mut u8 => unsafe this as *mut u8;
 
     pub fn set_zn(mut this, val: u8) {
         this.negative = val & 0x80 != 0;
@@ -62,6 +53,12 @@ packed struct Flags {
 
 union Interrupt { Irq, Nmi, Brk }
 
+pub struct Signals {
+    pub irq_pending: bool = false,
+    pub nmi_pending: bool = false,
+    pub dma_flag: bool = false,
+}
+
 pub struct Cpu {
     a: u8 = 0,
     x: u8 = 0,
@@ -69,22 +66,22 @@ pub struct Cpu {
     p: Flags = Flags(int_disable: true, brk: true, overflow: true),
     s: u8 = 0xfd,
     pc: u16,
-    pub bus: CpuBus,
+    bus: *mut Bus,
+    signals: *mut Signals,
 
     odd_cycle: bool = false,
     cycles: u64 = 0,
-    pub nmi_pending: bool = false,
-    pub irq_pending: bool = false,
 
-    pub fn new(mut bus: CpuBus): This => Cpu(pc: bus.read_u16(0xfffc), bus:);
+    pub fn new(bus: *mut Bus, signals: *mut Signals): This {
+        Cpu(pc: bus.read_u16(0xfffc), bus:, signals:)
+    }
 
     pub fn step(mut this, dmc_stall: bool) {
         if dmc_stall {
             this.cycles += 4;
         }
 
-        if this.bus.dma_flag {
-            this.bus.dma_flag = false;
+        if std::mem::replace(&mut this.signals.dma_flag, false) {
             this.cycles += 513 + this.odd_cycle as u64;
         }
 
@@ -94,10 +91,10 @@ pub struct Cpu {
         }
 
         this.cycles = 0;
-        if this.nmi_pending or this.irq_pending {
-            let typ = this.nmi_pending then Interrupt::Nmi else Interrupt::Irq;
-            this.nmi_pending = false;
-            this.irq_pending = false;
+        if this.signals.nmi_pending or this.signals.irq_pending {
+            let typ = this.signals.nmi_pending then Interrupt::Nmi else Interrupt::Irq;
+            this.signals.nmi_pending = false;
+            this.signals.irq_pending = false;
             return this.interrupt(typ);
         }
 
@@ -261,6 +258,7 @@ pub struct Cpu {
         this.pc = this.bus.read_u16(0xfffc);
         this.s -= 3;
         this.p.int_disable = true;
+        this.signals.irq_pending = false;
     }
 
     // ------------
@@ -644,129 +642,4 @@ pub struct Cpu {
             write(f, "\x1b[0m");
         }
     }
-}
-
-pub struct CpuBus {
-    pub ppu: Ppu,
-    pub apu: Apu,
-    pub ipt: Input,
-    ram: [u8; 0x800] = [0; 0x800],
-    prg_ram: [u8; 0x2000] = [0; 0x2000],
-    mapper: *dyn mut Mapper,
-    poll_input: [u8; 2] = [0; 2],
-    dma_flag: bool = false,
-
-    pub fn new(ipt: Input, mapper: *dyn mut Mapper, pirq: *mut bool, sram: ?[u8..] = null): This {
-        mut self = CpuBus(ipt:, mapper:, ppu: Ppu::new(mapper), apu: Apu::new(pirq));
-        if sram is ?sram and sram.len() == self.prg_ram.len() {
-            self.prg_ram[..] = sram;
-        }
-        self
-    }
-
-    pub fn reset(mut this) {
-        this.ppu.reset();
-        this.apu.reset();
-        this.mapper.reset();
-    }
-
-    pub fn write(mut this, addr: u16, val: u8) {
-        match addr {
-            ..0x2000 => this.ram[addr & 0x7ff] = val,
-            ..0x4000 => match addr & 0x2007 {
-                0x2000 => this.ppu.write_ctrl(val),
-                0x2001 => this.ppu.write_mask(val),
-                0x2003 => this.ppu.write_oam_addr(val),
-                0x2004 => this.ppu.write_oam(val),
-                0x2005 => this.ppu.write_scroll(val),
-                0x2006 => this.ppu.write_addr(val),
-                0x2007 => this.ppu.write_data(val),
-                _ => {}
-            }
-            ..0x4004 => this.apu.write_reg((addr - 0x4000) as! u2, :Pulse1, val),
-            ..0x4008 => this.apu.write_reg((addr - 0x4004) as! u2, :Pulse2, val),
-            ..0x400c => this.apu.write_reg((addr - 0x4008) as! u2, :Triangle, val),
-            ..0x4010 => this.apu.write_reg((addr - 0x400c) as! u2, :Noise, val),
-            ..0x4014 => this.apu.write_reg((addr - 0x4010) as! u2, :Dmc, val),
-            0x4014 => {
-                for i in 0u8..=255 {
-                    this.ppu.write_oam_dma(i, this.read((val as u16 << 8).wrapping_add(i as u16)));
-                }
-                this.dma_flag = true;
-            }
-            0x4015 => this.apu.write_status(this, val),
-            0x4016 => if val & 1 != 0 { this.poll_input = this.ipt.raw_state(); }
-            0x4017 => this.apu.write_frame_counter(val),
-            ..0x6000 => eprintln("attempt to write to expansion ROM at {addr:#X}"),
-            ..0x8000 => this.prg_ram[addr - 0x6000] = val,
-            _ => this.mapper.write_prg(addr, val),
-        }
-    }
-
-    pub fn read(mut this, addr: u16): u8 {
-        match addr {
-            ..0x2000 => this.ram[addr & 0x7ff],
-            ..0x4000 => match addr & 0x2007 {
-                0x2002 => this.ppu.read_status(),
-                0x2004 => this.ppu.read_oam(),
-                0x2007 => this.ppu.read_data(),
-                _ => this.open_bus(),
-            }
-            0x4015 => this.apu.read_status(),
-            0x4016 => {
-                let res = this.poll_input[0] & 1;
-                this.poll_input[0] >>= 1;
-                res
-            }
-            0x4017 => {
-                let res = this.poll_input[1] & 1;
-                this.poll_input[1] >>= 1;
-                res
-            }
-            ..0x6000 => {
-                eprintln("attempt to read from expansion ROM at {addr:#X}");
-                this.open_bus()
-            },
-            ..0x8000 => this.prg_ram[addr - 0x6000],
-            _ => this.mapper.read_prg(addr),
-        }
-    }
-
-    pub fn read_u16(mut this, addr: u16): u16 {
-        (this.read(addr.wrapping_add(1)) as u16 << 8) | this.read(addr) as u16
-    }
-
-    pub fn read_u16_pw(mut this, addr: u16): u16 {
-        let hi = (addr & 0xff00) + (addr.wrapping_add(1) & 0xff);
-        (this.read(hi) as u16 << 8) | this.read(addr) as u16
-    }
-
-    pub fn peek(this, addr: u16): u8 {
-        match addr {
-            ..0x2000 => this.ram[addr & 0x7ff],
-            ..0x4000 => match addr & 0x2007 {
-                0x2002 => this.ppu.peek_status(),
-                0x2004 => this.ppu.read_oam(),
-                0x2007 => this.ppu.peek_data(),
-                _ => this.open_bus(),
-            }
-            0x4015 => this.apu.peek_status(),
-            0x4016 => this.poll_input[0] & 1,
-            0x4017 => this.poll_input[1] & 1,
-            ..0x6000 => {
-                eprintln("attempt to read from expansion ROM");
-                this.open_bus()
-            },
-            ..0x8000 => this.prg_ram[addr - 0x6000],
-            _ => this.mapper.read_prg(addr),
-        }
-    }
-
-    pub fn peek_u16(this, addr: u16): u16 {
-        (this.peek(addr.wrapping_add(1)) as u16 << 8) | this.peek(addr) as u16
-    }
-
-    pub fn sram(this): [u8..] => this.prg_ram[..];
-
-    fn open_bus(this): u8 => 0;
 }

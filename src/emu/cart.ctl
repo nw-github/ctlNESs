@@ -1,12 +1,5 @@
 use ctlness::utils::ReadExt;
-
-pub union Mirroring {
-    Horizontal,
-    Vertical,
-    FourScreen,
-    OneScreenA,
-    OneScreenB,
-}
+pub use super::ppu::Mirroring;
 
 pub struct Cart {
     pub chr_rom: [u8..],

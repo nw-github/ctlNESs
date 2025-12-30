@@ -9,6 +9,24 @@ pub struct UxRom {
         UxRom(cart:, chr_ram: if cart.chr_rom.is_empty() { [0; 0x2000] })
     }
 
+    impl super::Mem {
+        fn peek(this, addr: u16): ?u8 {
+            if addr >= 0x8000 {
+                if addr < 0xc000 {
+                    this.cart.prg_rom[this.bank as uint * 0x4000..][addr & 0x3fff]
+                } else {
+                    this.cart.prg_rom[this.cart.prg_rom.len() - 0x4000..][addr & 0x3fff]
+                }
+            }
+        }
+
+        fn write(mut this, _: *mut super::Bus, addr: u16, val: u8) {
+            if addr >= 0x8000 {
+                this.bank = val & 0xf;
+            }
+        }
+    }
+
     impl super::Mapper {
         fn peek_chr(this, addr: u16): u8 {
             if &this.chr_ram is ?chr_ram {
@@ -22,18 +40,6 @@ pub struct UxRom {
             if &mut this.chr_ram is ?chr_ram {
                 chr_ram[addr] = val;
             }
-        }
-
-        fn read_prg(this, addr: u16): u8 {
-            if addr < 0xc000 {
-                this.cart.prg_rom[this.bank as uint * 0x4000..][addr & 0x3fff]
-            } else {
-                this.cart.prg_rom[this.cart.prg_rom.len() - 0x4000..][addr & 0x3fff]
-            }
-        }
-
-        fn write_prg(mut this, _addr: u16, val: u8) {
-            this.bank = val & 0xf;
         }
 
         fn mirroring(this): Mirroring => this.cart.mirroring;

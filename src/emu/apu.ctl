@@ -1,4 +1,4 @@
-use super::cpu::CpuBus;
+use super::bus::*;
 
 pub union Channel {
     Pulse1,
@@ -9,9 +9,9 @@ pub union Channel {
 }
 
 pub struct Apu {
+    irq_pending: *mut bool,
     cycles: uint = 0,
     seq_step: uint = 0,
-    irq_pending: *mut bool,
     irq_enabled: bool = false,
     five_step_mode: bool = false,
 
@@ -21,9 +21,7 @@ pub struct Apu {
     noise: Noise = Noise(),
     dmc: Dmc = Dmc(),
 
-    pub fn new(irq_pending: *mut bool): This {
-        Apu(irq_pending:)
-    }
+    pub fn new(irq_pending: *mut bool): This => Apu(irq_pending:);
 
     pub fn reset(mut this) {
         this.cycles = 0;
@@ -31,7 +29,7 @@ pub struct Apu {
         this.write_frame_counter(0);
     }
 
-    pub fn step(mut this, bus: *mut CpuBus): bool {
+    pub fn step(mut this, bus: *mut Bus): bool {
         const CLOCK_RATE: uint = 1789773; // 1789772.6
 
         this.cycles++;
@@ -61,7 +59,7 @@ pub struct Apu {
         std::mem::replace(&mut this.dmc.stall, false)
     }
 
-    pub fn write_reg(mut this, reg: u2, channel: Channel, val: u8) {
+    fn write_reg(mut this, reg: u2, channel: Channel, val: u8) {
         match channel {
             Channel::Pulse1 => match reg {
                 0 => this.pulse1.write_reg1(val),
@@ -121,14 +119,14 @@ pub struct Apu {
     }
 
     // r $4015
-    pub fn read_status(mut this): u8 {
+    fn read_status(mut this): u8 {
         let val = this.peek_status();
         this.irq_enabled = false;
         val
     }
 
     // r $4015
-    pub fn peek_status(this): u8 {
+    fn peek_status(this): u8 {
         (this.dmc.irq_enable as u8 << 7)
             | (this.irq_enabled as u8 << 6)
             | ((this.dmc.read_remaining != 0) as u8 << 4)
@@ -138,7 +136,7 @@ pub struct Apu {
             | ((this.pulse1.len_count.val != 0) as u8 << 0)
     }
 
-    pub fn write_status(mut this, bus: *mut CpuBus, val: u8) {
+    fn write_status(mut this, bus: *mut Bus, val: u8) {
         this.dmc.enabled = val & (1 << 4) != 0;
         this.noise.enabled = val & (1 << 3) != 0;
         this.tri.enabled = val & (1 << 2) != 0;
@@ -168,7 +166,7 @@ pub struct Apu {
     }
 
     // w $4017
-    pub fn write_frame_counter(mut this, val: u8) {
+    fn write_frame_counter(mut this, val: u8) {
         this.five_step_mode = val & (1 << 7) != 0;
         this.irq_enabled = val & (1 << 6) == 0; // this is actually the IRQ inhibit flag
         // disable the pending irq?
@@ -206,6 +204,33 @@ pub struct Apu {
         this.pulse2.clock_half_frame(true);
         this.tri.len_count.clock();
         this.noise.len_count.clock();
+    }
+
+    impl Mem {
+        fn peek(this, addr: u16): ?u8 {
+            if addr is 0x4015 {
+                this.peek_status()
+            }
+        }
+
+        fn read(mut this, addr: u16): ?u8 {
+            if addr is 0x4015 {
+                this.read_status()
+            }
+        }
+
+        fn write(mut this, bus: *mut Bus, addr: u16, val: u8) {
+            match addr {
+                0x4000..0x4004 => this.write_reg((addr - 0x4000) as! u2, :Pulse1, val),
+                0x4004..0x4008 => this.write_reg((addr - 0x4004) as! u2, :Pulse2, val),
+                0x4008..0x400c => this.write_reg((addr - 0x4008) as! u2, :Triangle, val),
+                0x400c..0x4010 => this.write_reg((addr - 0x400c) as! u2, :Noise, val),
+                0x4010..0x4014 => this.write_reg((addr - 0x4010) as! u2, :Dmc, val),
+                0x4015 => this.write_status(bus, val),
+                0x4017 => this.write_frame_counter(val),
+                _ => {}
+            }
+        }
     }
 }
 
@@ -475,7 +500,7 @@ struct Dmc {
     stall: bool = false,
     muted: bool = false,
 
-    pub fn clock(mut this, bus: *mut CpuBus, irq_pending: *mut bool) {
+    pub fn clock(mut this, bus: *mut Bus, irq_pending: *mut bool) {
         guard this.tmr.clock() else {
             return;
         }
@@ -507,7 +532,7 @@ struct Dmc {
         }
     }
 
-    pub fn transfer(mut this, bus: *mut CpuBus, irq_pending: *mut bool) {
+    pub fn transfer(mut this, bus: *mut Bus, irq_pending: *mut bool) {
         guard this.read_remaining != 0 and this.read_buf is null else {
             return;
         }

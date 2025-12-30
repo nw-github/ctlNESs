@@ -5,7 +5,7 @@ packed struct Control {
     prg_mode: u2 = 0b11,
     chr_mode: u1 = 0,
 
-    pub fn from_u8(val: u8): This => unsafe std::mem::transmute(val);
+    pub fn from_u8(val: u8): This => unsafe std::mem::bit_cast(val);
 }
 
 pub struct Mmc1 {
@@ -49,29 +49,19 @@ pub struct Mmc1 {
         }
     }
 
-    impl super::Mapper {
-        fn peek_chr(this, addr: u16): u8 {
-            if &this.chr_ram is ?chr_ram {
-                chr_ram[addr]
-            } else if addr < 0x1000 {
-                this.cart.chr_rom[this.chr_bank0..][addr]
-            } else {
-                this.cart.chr_rom[this.chr_bank1..][addr & 0xfff]
+    impl super::Mem {
+        fn peek(this, addr: u16): ?u8 {
+            if addr >= 0x8000 {
+                let bank = addr < 0xc000 then this.prg_bank0 else this.prg_bank1;
+                this.cart.prg_rom[bank..][addr & 0x3fff]
             }
         }
 
-        fn write_chr(mut this, addr: u16, val: u8) {
-            if &mut this.chr_ram is ?chr_ram {
-                chr_ram[addr] = val;
+        fn write(mut this, _: *mut super::Bus, addr: u16, val: u8) {
+            if addr < 0x8000 {
+                return;
             }
-        }
 
-        fn read_prg(this, addr: u16): u8 {
-            let bank = addr < 0xc000 then this.prg_bank0 else this.prg_bank1;
-            this.cart.prg_rom[bank..][addr & 0x3fff]
-        }
-
-        fn write_prg(mut this, addr: u16, val: u8) {
             guard val & (1 << 7) == 0 else {
                 this.d0 = 0;
                 this.write = 0;
@@ -120,6 +110,24 @@ pub struct Mmc1 {
 
             this.d0 = 0;
             this.write = 0;
+        }
+    }
+
+    impl super::Mapper {
+        fn peek_chr(this, addr: u16): u8 {
+            if &this.chr_ram is ?chr_ram {
+                chr_ram[addr]
+            } else if addr < 0x1000 {
+                this.cart.chr_rom[this.chr_bank0..][addr]
+            } else {
+                this.cart.chr_rom[this.chr_bank1..][addr & 0xfff]
+            }
+        }
+
+        fn write_chr(mut this, addr: u16, val: u8) {
+            if &mut this.chr_ram is ?chr_ram {
+                chr_ram[addr] = val;
+            }
         }
 
         fn mirroring(this): Mirroring {
