@@ -14,7 +14,7 @@ pub struct SDL_AudioSpec {
     pub samples: u16,
     pub _padding: u16 = 0,
     pub size: u32,
-    pub callback: ?extern fn(?^mut void, ^mut u8, c_int),
+    pub callback: ?extern fn(user_data: ?^mut void, samples: ^mut u8, len: c_int),
     pub user_data: ?^mut void,
 }
 

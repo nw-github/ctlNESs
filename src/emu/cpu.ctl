@@ -617,29 +617,28 @@ pub struct Cpu {
 
     impl std::fmt::Format {
         fn fmt(this, f: *mut std::fmt::Formatter) {
-            let (ins, len) = super::debugger::Instr::decode(bus: &this.bus, pc: this.pc);
-            mut buf = "\x1b[90m${this.pc:04X}\x1b[0m  \x1b[32m{ins.mnemonic}\x1b[0m ".to_str();
+            let (ins, len) = super::debugger::Instr::decode(bus: this.bus, pc: this.pc);
+            mut buf = "\e[90m${this.pc:04X}\e[0m  \e[32m{ins.mnemonic}\e[0m ".to_str();
             mut pad = 50u16;
             match ins {
                 :Imp(?reg)      => { buf += reg; pad -= 9; },
-                :Imm(val)       => buf += "\x1b[35m#${val:02X}\x1b[0m".to_str(),
-                :Zp(val, ?reg)  => buf += "\x1b[34m${val:02X}\x1b[0m, {reg}".to_str(),
-                :Zp(val, null)  => buf += "\x1b[34m${val:02X}\x1b[0m".to_str(),
-                :Izx(val)       => buf += "(\x1b[36m${val:02X}\x1b[0m, X)".to_str(),
-                :Izy(val)       => buf += "(\x1b[36m${val:02X}\x1b[0m), Y".to_str(),
-                :Ind(val)       => buf += "(\x1b[36m${val:04X}\x1b[0m)".to_str(),
-                :Abs(val, ?reg) => buf += "\x1b[36m${val:04X}\x1b[0m, {reg}".to_str(),
-                :Abs(val, null) => buf += "\x1b[36m${val:04X}\x1b[0m".to_str(),
+                :Imm(val)       => buf += "\e[35m#${val:02X}\e[0m".to_str(),
+                :Zp(val, ?reg)  => buf += "\e[34m${val:02X}\e[0m, {reg}".to_str(),
+                :Zp(val, null)  => buf += "\e[34m${val:02X}\e[0m".to_str(),
+                :Izx(val)       => buf += "(\e[36m${val:02X}\e[0m, X)".to_str(),
+                :Izy(val)       => buf += "(\e[36m${val:02X}\e[0m), Y".to_str(),
+                :Ind(val)       => buf += "(\e[36m${val:04X}\e[0m)".to_str(),
+                :Abs(val, ?reg) => buf += "\e[36m${val:04X}\e[0m, {reg}".to_str(),
+                :Abs(val, null) => buf += "\e[36m${val:04X}\e[0m".to_str(),
                 _ => pad -= 9,
             }
 
-            write(f, "{buf:<pad$}; A: \x1b[31m{this.a:02X}\x1b[0m X: \x1b[33m{
-                this.x:02X}\x1b[0m Y: \x1b[34m{this.y:02X}\x1b[0m S: \x1b[35m{
-                this.s:02X}\x1b[0m P: [\x1b[36m{this.p}\x1b[0m] ;\x1b[90m");
+            write(f, "{buf:<pad$}; A: \e[31m{this.a:02X}\e[0m X: \e[33m{this.x:02X}\e[0m Y: \e[34m{
+                this.y:02X}\e[0m S: \e[35m{this.s:02X}\e[0m P: [\e[36m{this.p}\e[0m] ;\e[90m");
             for i in 0u16..len {
                 write(f, " {this.bus.peek(addr: this.pc + i):02X}");
             }
-            write(f, "\x1b[0m");
+            write(f, "\e[0m");
         }
     }
 }
