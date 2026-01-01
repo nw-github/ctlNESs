@@ -11,6 +11,7 @@ pub struct Nes {
     signals: *mut cpu::Signals,
     cycle: u64 = 0,
     audio: [f64] = @[0.0; (NTSC_CLOCK_RATE * 0.02) as uint],
+    video: [mut u32..] = @[0u32; ppu::HPIXELS * ppu::VPIXELS][..],
 
     pub fn new(cart: cart::Cart, ipt_mode: ipt::InputMode, prg_ram: ?[u8..]): Nes {
         let signals = std::alloc::new(cpu::Signals());
@@ -26,8 +27,8 @@ pub struct Nes {
         let ipt = std::alloc::new(ipt::Input::new(ipt_mode));
         let apu = std::alloc::new(apu::Apu::new(&mut signals.irq_pending));
         let ppu = std::alloc::new(ppu::Ppu::new(mapper, &mut signals.dma_flag));
-        let ram = std::alloc::new(bus::Ram::new(0x800, 0x0000u16..0x2000));
-        let sram = std::alloc::new(bus::Ram::new(0x2000, 0x6000u16..0x8000));
+        let ram = std::alloc::new(bus::Ram::new(0x800, 0x0000..0x2000));
+        let sram = std::alloc::new(bus::Ram::new(0x2000, 0x6000..0x8000));
         if prg_ram is ?prg_ram and prg_ram.len() == sram.buf.len() {
             sram.buf[..] = prg_ram;
         }
@@ -38,15 +39,15 @@ pub struct Nes {
     }
 
     pub fn reset(mut this) {
-        this.cpu.reset();
+        this.mapper.reset();
         this.apu.reset();
         this.ppu.reset();
-        this.mapper.reset();
+        this.cpu.reset();
     }
 
     pub fn input(mut this): *mut ipt::Input => this.ipt;
 
-    pub fn video_buffer(this): [u32..] => this.ppu.buf;
+    pub fn video_buffer(this): [u32..] => this.video;
 
     pub fn audio_buffer(mut this): [f64..] {
         let buf = this.audio[..];
@@ -57,10 +58,10 @@ pub struct Nes {
     pub fn sram(this): [u8..] => this.sram.buf;
 
     pub fn cycle(mut this): bool {
-        let draw = this.ppu.step(&mut this.signals.nmi_pending);
+        let draw = this.ppu.step(this.video, &mut this.signals.nmi_pending);
         if this.cycle++ % 3 == 0 {
-            let dmc_stall = this.apu.step(this.bus);
-            this.audio.push(this.apu.output());
+            let (dmc_stall, output) = this.apu.step(this.bus);
+            this.audio.push(output);
             this.cpu.step(dmc_stall);
         }
         draw

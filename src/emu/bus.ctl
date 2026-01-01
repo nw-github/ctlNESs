@@ -41,7 +41,7 @@ pub struct Bus {
         }
 
         if result.is_null() {
-            eprintln("attempt to read from open bus at ${addr:#X}");
+            eprintln("attempt to read from open bus at ${addr:X} => {this.last_read:X}");
         }
 
         this.last_read = result ?? this.last_read;

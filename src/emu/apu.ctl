@@ -29,7 +29,7 @@ pub struct Apu {
         this.write_frame_counter(0);
     }
 
-    pub fn step(mut this, bus: *mut Bus): bool {
+    pub fn step(mut this, bus: *mut Bus): (bool, f64) {
         const CLOCK_RATE: uint = 1789773; // 1789772.6
 
         this.cycles++;
@@ -56,7 +56,8 @@ pub struct Apu {
             this.seq_step++;
         }
 
-        std::mem::replace(&mut this.dmc.stall, false)
+        let dmc_stall = std::mem::replace(&mut this.dmc.stall, false);
+        (dmc_stall, this.mix())
     }
 
     fn write_reg(mut this, reg: u2, channel: Channel, val: u8) {
@@ -186,7 +187,7 @@ pub struct Apu {
         }
     }
 
-    pub fn output(this): f64 {
+    fn mix(this): f64 {
         let pulse = this.pulse1.output() + this.pulse2.output();
         let tnd   = this.tri.output() * 3 + this.noise.output() * 2 + this.dmc.output();
         PULSE_TABLE[pulse as uint % PULSE_TABLE.len()] + TND_TABLE[tnd as uint % TND_TABLE.len()]

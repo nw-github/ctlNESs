@@ -55,8 +55,6 @@ struct Sprite {
 }
 
 pub struct Ppu {
-    pub buf: [mut u32..] = @[0u32; HPIXELS * VPIXELS][..],
-
     mapper: *dyn mut Mapper,
     dma_flag: *mut bool,
     palette: [u8; 0x20] = [0; 0x20],
@@ -95,7 +93,7 @@ pub struct Ppu {
         this.w = false;
     }
 
-    pub fn step(mut this, nmi: *mut bool): bool {
+    pub fn step(mut this, buf: [mut u32..], nmi: *mut bool): bool {
         mut result = false;
         match this.state {
             :PreRender => {
@@ -116,7 +114,7 @@ pub struct Ppu {
                     this.mapper.scanline();
                 }
             }
-            :Render => this.render(),
+            :Render => this.render(buf),
             :PostRender => {
                 if this.cycle >= SCANLINE_END_CYCLE {
                     this.scanline++;
@@ -150,7 +148,7 @@ pub struct Ppu {
         result
     }
 
-    fn render(mut this) {
+    fn render(mut this, buf: [mut u32..]) {
         let show_bg = this.mask.show_bg;
         let show_spr = this.mask.show_sprites;
         if (0u16..=HPIXELS as! u16).contains(&this.cycle) {
@@ -241,7 +239,7 @@ pub struct Ppu {
                 // eprintln("attempt to render bad palette index {idx}");
                 idx = 0;
             }
-            this.buf[x + y * HPIXELS as! u16] = PALETTE[idx].to_abgr32();
+            buf[x + y * HPIXELS as! u16] = PALETTE[idx].to_abgr32();
         } else if this.cycle == HPIXELS as! u16 + 1 and show_bg {
             if this.v & 0x7000 != 0x7000 { // if fine Y < 7
                 this.v += 0x1000;             // increment fine Y
