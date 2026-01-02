@@ -150,15 +150,7 @@ pub struct Mmc3 {
         }
 
         fn reset(mut this) {
-            this.ctrl = Control();
-            this.bank_regs = [0; 8];
-            this.irq_enabled = false;
-            this.irq_counter = 0;
-            this.irq_latch = 0;
-            this.irq_reload_pending = false;
-            this.prg_banks = [0; 4];
-            this.chr_banks = [0; 8];
-            this.mirroring = :Horizontal;
+            *this = Mmc3::new(this.cart, this.irq_pending);
         }
     }
 }
