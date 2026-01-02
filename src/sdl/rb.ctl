@@ -19,7 +19,7 @@ pub struct RingBuffer<T> {
         )
     }
 
-    pub fn push(mut this, item: T): ?T {
+    pub fn push(this, item: T): ?T {
         let pos = this.write.load();
         let next = (pos + 1) % this.cap;
         if next == this.read.load() {
@@ -31,7 +31,7 @@ pub struct RingBuffer<T> {
         null
     }
 
-    pub fn pop(mut this): ?T {
+    pub fn pop(this): ?T {
         let pos = this.read.load();
         if pos != this.write.load() {
             this.read.store((pos + 1) % this.cap);

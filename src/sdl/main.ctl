@@ -271,13 +271,11 @@ pub struct Audio {
         unsafe SDL_PauseAudioDevice(this.device, 1);
     }
 
-    pub fn buffer(mut this): *mut rb::RingBuffer<f32> {
-        &mut this.buf
-    }
+    pub fn buffer(this): *rb::RingBuffer<f32> => &this.buf;
 }
 
 extern fn sdl_audio_callback(user_data: ?^mut void, samples: ^mut u8, len: c_int) {
-    let self = unsafe user_data! as *mut Audio;
+    let self = unsafe user_data! as *Audio;
     let samples = unsafe SpanMut::new(samples.cast::<f32>(), len as! uint / 4);
     for sample in samples.iter_mut() {
         *sample = self.buf.pop() ?? 0.0;

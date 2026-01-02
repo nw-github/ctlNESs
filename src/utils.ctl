@@ -48,7 +48,6 @@ pub union SeekPos {
     End,
 }
 
-@(c_opaque, c_name(FILE))
 pub union File {
     pub fn open(kw path: str, kw mode: str): ?*mut File {
         unsafe libc::fopen(path.as_raw().cast(), mode.as_raw().cast())

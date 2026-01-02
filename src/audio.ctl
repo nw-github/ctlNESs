@@ -24,7 +24,7 @@ pub struct Mixer {
         )
     }
 
-    pub fn process(mut this, buf: *mut RingBuffer<f32>, samples: [f64..], max_delta: ?f64 = 0.005) {
+    pub fn process(mut this, buf: *RingBuffer<f32>, samples: [f64..], max_delta: ?f64 = 0.005) {
         this.pitch_ratio = if max_delta is ?max_delta {
             let cap = buf.cap() as f64;
             ((cap - 2.0 * buf.len() as f64) / cap) * max_delta + 1.0

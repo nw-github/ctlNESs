@@ -181,7 +181,8 @@ pub extern fn SDL_CreateRGBSurfaceFrom(
     kw bmask:  u32,
     kw amask:  u32,
 ): ?*mut SDL_Surface;
-@(c_name(SDL_UpperBlitScaled))
+
+@(link_name(SDL_UpperBlitScaled))
 pub extern fn SDL_BlitScaled(
     src:     *mut SDL_Surface,
     srcrect: ?*SDL_Rect,
