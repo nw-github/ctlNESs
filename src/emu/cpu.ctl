@@ -8,6 +8,10 @@ pub union Shift { Asl, Lsr, Rol, Ror }
 pub union Reg { A, X, Y, P, S }
 pub union Flag { Carry, Zero, IntDisable, Decimal, Break, Unused, Overflow, Negative }
 
+const NMI_VECTOR: u16 = 0xfffa;
+const RES_VECTOR: u16 = 0xfffc;
+const IRQ_VECTOR: u16 = 0xfffe;
+
 packed struct Flags {
     carry: bool = false,
     zero: bool = false,
@@ -73,7 +77,7 @@ pub struct Cpu {
     cycles: u64 = 0,
 
     pub fn new(bus: *mut Bus, signals: *mut Signals): This {
-        Cpu(pc: bus.read_u16(0xfffc), bus:, signals:)
+        Cpu(pc: bus.read_u16(RES_VECTOR), bus:, signals:)
     }
 
     pub fn step(mut this, dmc_stall: bool) {
@@ -255,7 +259,7 @@ pub struct Cpu {
     }
 
     pub fn reset(mut this) {
-        this.pc = this.bus.read_u16(0xfffc);
+        this.pc = this.bus.read_u16(RES_VECTOR);
         this.s -= 3;
         this.p.int_disable = true;
         this.signals.irq_pending = false;
@@ -269,7 +273,7 @@ pub struct Cpu {
         }
 
         this.cycles += 6; // 7
-        let vector = this.bus.read_u16(if typ is :Nmi { 0xfffa } else { 0xfffe });
+        let vector = this.bus.read_u16(typ is :Nmi then NMI_VECTOR else IRQ_VECTOR);
         this.push_u16(this.pc);
         this.push_flags(interrupt: typ is :Nmi | :Irq);
         this.p.int_disable = true;
@@ -617,19 +621,21 @@ pub struct Cpu {
 
     impl std::fmt::Format {
         fn fmt(this, f: *mut std::fmt::Formatter) {
-            let (ins, len) = super::debugger::Instr::decode(bus: this.bus, pc: this.pc);
+            use super::debugger::*;
+
+            let (ins, len) = Instr::decode(bus: this.bus, pc: this.pc);
             mut buf = "\e[90m${this.pc:04X}\e[0m  \e[32m{ins.mnemonic}\e[0m ".to_str();
             mut pad = 50u16;
             match ins {
-                :Imp(?reg)      => { buf += reg; pad -= 9; },
-                :Imm(val)       => buf += "\e[35m#${val:02X}\e[0m".to_str(),
-                :Zp(val, ?reg)  => buf += "\e[34m${val:02X}\e[0m, {reg}".to_str(),
-                :Zp(val, null)  => buf += "\e[34m${val:02X}\e[0m".to_str(),
-                :Izx(val)       => buf += "(\e[36m${val:02X}\e[0m, X)".to_str(),
-                :Izy(val)       => buf += "(\e[36m${val:02X}\e[0m), Y".to_str(),
-                :Ind(val)       => buf += "(\e[36m${val:04X}\e[0m)".to_str(),
-                :Abs(val, ?reg) => buf += "\e[36m${val:04X}\e[0m, {reg}".to_str(),
-                :Abs(val, null) => buf += "\e[36m${val:04X}\e[0m".to_str(),
+                :Imp(?reg)       => { buf += reg; pad -= 9; },
+                :Imm(val)        => buf += "\e[35m#${val:02X}\e[0m".to_str(),
+                :Zp(zpa, ?reg)   => buf += "\e[34m${zpa:02X}\e[0m, {reg}".to_str(),
+                :Zp(zpa, null)   => buf += "\e[34m${zpa:02X}\e[0m".to_str(),
+                :Izx(zpa)        => buf += "(\e[36m${zpa:02X}\e[0m, X)".to_str(),
+                :Izy(zpa)        => buf += "(\e[36m${zpa:02X}\e[0m), Y".to_str(),
+                :Ind(addr)       => buf += "(\e[36m${Addr(addr:):#}\e[0m)".to_str(),
+                :Abs(addr, ?reg) => buf += "\e[36m${Addr(addr:):#}\e[0m, {reg}".to_str(),
+                :Abs(addr, null) => buf += "\e[36m${Addr(addr:):#}\e[0m".to_str(),
                 _ => pad -= 9,
             }
 

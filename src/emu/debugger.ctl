@@ -21,6 +21,64 @@ pub union Instr {
     }
 }
 
+pub struct Addr {
+    pub addr: u16,
+
+    fn read(this): ?str {
+        match this.addr {
+            0x2002 => "PPU_STATUS",
+            0x2004 => "PPU_OAM",
+            0x4015 => "APU_STATUS",
+            0x4016 => "IPT0",
+            0x4017 => "IPT1",
+            _ => null,
+        }
+    }
+
+    fn write(this): ?str {
+        match this.addr {
+            0x2000 => "PPU_CTRL",
+            0x2001 => "PPU_MASK",
+            0x2003 => "PPU_OAM_ADDR",
+            0x2004 => "PPU_OAM",
+            0x2005 => "PPU_SCROLL",
+            0x2006 => "PPU_ADDR",
+            0x2007 => "PPU_DATA",
+            0x4000..0x4004 => "APU_P1({this.addr - 0x4000:02X})".to_str(),
+            0x4004..0x4008 => "APU_P2({this.addr - 0x4004:02X})".to_str(),
+            0x4008..0x400c => "APU_TRI({this.addr - 0x4008:02X})".to_str(),
+            0x400c..0x4010 => "APU_NOISE({this.addr - 0x400c:02X})".to_str(),
+            0x4010..0x4014 => "APU_DMC({this.addr - 0x4010:02X})".to_str(),
+            0x4014 => "PPU_DMA",
+            0x4015 => "APU_STATUS",
+            0x4016 => "IPT_CLOCK",
+            0x4017 => "APU_FC",
+            _ => null,
+        }
+    }
+
+    impl std::fmt::Format {
+        fn fmt(this, f: *mut std::fmt::Formatter) {
+            if !f.options().alt {
+                return write(f, "{this.addr:04X}");
+            }
+
+            let [r, w] = [true; 2];
+            let raddr = r and this.read() is ?val then val;
+            let waddr = w and this.write() is ?val then val;
+            if raddr is ?raddr and waddr is ?waddr and raddr != waddr {
+                write(f, "R_{raddr}/W_{waddr}");
+            } else if waddr is ?waddr {
+                write(f, waddr);
+            } else if raddr is ?raddr {
+                write(f, raddr);
+            } else {
+                write(f, "{this.addr:04X}");
+            }
+        }
+    }
+}
+
 pub struct Decoder {
     pub bus: *Bus,
     pub pc: u16,
@@ -178,7 +236,7 @@ pub struct Decoder {
             0xf9 => this.arithmetic(Load::Aby, Operation::Sbc),
             0xfd => this.arithmetic(Load::Abx, Operation::Sbc),
             0xfe => this.inc_dec(dec: false, IncLoad::Abx),
-            opcode => Instr::Imp(mnemonic: "UNK", "{opcode:#02x}".to_str()),
+            opcode => Instr::Imp(mnemonic: "UNK", "{opcode:02X}".to_str()),
         }
     }
 
