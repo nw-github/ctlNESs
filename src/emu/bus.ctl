@@ -69,12 +69,19 @@ pub struct Bus {
 }
 
 use std::range::Range;
+use std::range::RangeInclusive;
 
 pub struct Ram {
     pub buf: [mut u8..],
-    pub range: Range<u16>,
+    pub range: RangeInclusive<u16>,
 
-    pub fn new(size: uint, range: Range<u16>): This => Ram(buf: @[0u8; size][..], range:);
+    pub fn at(size: uint, range: Range<u16>): This {
+        This::at_inclusive(size, range.start..=range.end.checked_sub(1).unwrap_or(0))
+    }
+
+    pub fn at_inclusive(size: uint, range: RangeInclusive<u16>): This {
+        Ram(buf: @[0u8; size][..], range:)
+    }
 
     impl Mem {
         fn peek(this, addr: u16): ?u8 {

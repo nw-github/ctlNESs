@@ -27,8 +27,8 @@ pub struct Nes {
         let ipt = std::alloc::new(ipt::Input::new(ipt_mode));
         let apu = std::alloc::new(apu::Apu::new(&mut signals.irq_pending));
         let ppu = std::alloc::new(ppu::Ppu::new(mapper, &mut signals.dma_flag));
-        let ram = std::alloc::new(bus::Ram::new(0x800, 0x0000..0x2000));
-        let sram = std::alloc::new(bus::Ram::new(0x2000, 0x6000..0x8000));
+        let ram = std::alloc::new(bus::Ram::at(0x800, 0x0000..0x2000));
+        let sram = std::alloc::new(bus::Ram::at(0x2000, 0x6000..0x8000));
         if prg_ram is ?prg_ram and prg_ram.len() == sram.buf.len() {
             sram.buf[..] = prg_ram;
         }
