@@ -48,9 +48,9 @@ pub struct Mmc3 {
         fn peek(this, addr: u16): ?u8 {
             let bank = match addr {
                 ..0x8000 => return null,
-                ..=0x9fff => 0,
-                ..=0xbfff => 1,
-                ..=0xdfff => 2,
+                ..0xa000 => 0,
+                ..0xc000 => 1,
+                ..0xe000 => 2,
                 _ => 3,
             };
             this.cart.prg_rom[this.prg_banks[bank]..][addr & 0x1fff]
@@ -59,7 +59,7 @@ pub struct Mmc3 {
         fn write(mut this, _: *mut super::Bus, addr: u16, val: u8) {
             match addr {
                 ..0x8000 => return,
-                ..=0x9fff => {
+                ..0xa000 => {
                     guard addr & 1 != 0 else {
                         this.ctrl = Control::from_u8(val);
                         return;
@@ -92,7 +92,7 @@ pub struct Mmc3 {
                         std::mem::swap(&mut this.prg_banks[0], &mut this.prg_banks[2]);
                     }
                 },
-                ..=0xbfff => {
+                ..0xc000 => {
                     guard addr & 0x1 == 0 else {
                         // PRG_RAM protect
                         return;
@@ -106,7 +106,7 @@ pub struct Mmc3 {
                         :Vertical
                     };
                 },
-                ..=0xdfff => {
+                ..0xe000 => {
                     if addr & 1 == 0 {
                         this.irq_latch = val;
                     } else {
@@ -126,14 +126,14 @@ pub struct Mmc3 {
     impl super::Mapper {
         fn peek_chr(this, addr: u16): u8 {
             match addr {
-                ..0x1fff => this.cart.chr_rom[this.chr_banks[addr >> 10] + (addr & 0x3ff) as uint],
-                ..=0x2fff => this.mirroring_ram[addr - 0x2000],
+                ..0x2000 => this.cart.chr_rom[this.chr_banks[addr >> 10] + (addr & 0x3ff) as uint],
+                ..0x3000 => this.mirroring_ram[addr - 0x2000],
                 _ => 0,
             }
         }
 
         fn write_chr(mut this, addr: u16, val: u8) {
-            if addr is 0x2000..=0x2fff {
+            if addr is 0x2000..0x3000 {
                 this.mirroring_ram[addr - 0x2000] = val;
             }
         }
