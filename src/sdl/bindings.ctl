@@ -6,6 +6,7 @@ pub union SDL_Texture {}
 pub union SDL_Surface {}
 pub union SDL_sem {}
 
+@(layout(C))
 pub struct SDL_AudioSpec {
     pub freq: c_int,
     pub format: u16, // SDL_AudioFormat
@@ -18,6 +19,7 @@ pub struct SDL_AudioSpec {
     pub user_data: ?^mut void,
 }
 
+@(layout(C))
 pub struct SDL_Keysym {
     pub scancode: Scancode,
     pub sym: i32,
@@ -25,6 +27,7 @@ pub struct SDL_Keysym {
     pub unused: u32,
 }
 
+@(layout(C))
 pub struct SDL_KeyboardEvent {
     pub typ: u32,
     pub timestamp: u32,
@@ -36,6 +39,7 @@ pub struct SDL_KeyboardEvent {
     pub keysym: SDL_Keysym,
 }
 
+@(layout(C))
 pub struct SDL_WindowEvent {
     pub typ: u32,
     pub timestamp: u32,
@@ -68,6 +72,7 @@ pub union WindowEvent: u8 {
     DisplayChanged,
 }
 
+@(layout(C))
 pub unsafe union SDL_Event {
     typ: u32,
     key: SDL_KeyboardEvent,
@@ -75,6 +80,7 @@ pub unsafe union SDL_Event {
     _pad: [u8; 56],
 }
 
+@(layout(C))
 pub struct SDL_Rect {
     pub x: c_int,
     pub y: c_int,
