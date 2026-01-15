@@ -47,7 +47,7 @@ union State {
     VBlank,
 }
 
-@(layout(C))
+$[layout(C)]
 struct Sprite {
     y: u8 = 0,
     tile: u8 = 0,

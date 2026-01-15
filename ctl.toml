@@ -1,4 +1,10 @@
+[package]
 root = "src"
 name = "ctlness"
-libs = ["m", "SDL2"]
-build = "build"
+
+[link-libs]
+m = {}
+SDL2 = {}
+
+[build]
+overflow-checks = false

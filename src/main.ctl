@@ -1,10 +1,6 @@
 use sdl::*;
 use utils::*;
-use emu::ipt::*;
-use emu::Nes;
-use emu::ppu;
-use emu::cart::Cart;
-use emu::apu::Channel;
+use emu::{ipt::*, ppu, Nes, cart::Cart, apu::Channel};
 use std::time::Instant;
 
 fn read_bytes(path: str): ?[u8] {

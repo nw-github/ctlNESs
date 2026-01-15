@@ -1,3 +1,5 @@
+use std::range::{Range, RangeInclusive};
+
 pub trait Mem {
     fn peek(this, addr: u16): ?u8;
     fn read(mut this, addr: u16): ?u8 => this.peek(addr);
@@ -68,9 +70,6 @@ pub struct Bus {
     }
 }
 
-use std::range::Range;
-use std::range::RangeInclusive;
-
 pub struct Ram {
     pub buf: [mut u8..],
     pub range: RangeInclusive<u16>,
@@ -80,7 +79,7 @@ pub struct Ram {
     }
 
     pub fn at_inclusive(size: uint, range: RangeInclusive<u16>): This {
-        Ram(buf: @[0u8; size][..], range:)
+        This(buf: @[0u8; size][..], range:)
     }
 
     impl Mem {

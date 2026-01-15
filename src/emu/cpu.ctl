@@ -22,10 +22,10 @@ packed struct Flags {
     overflow: bool = false,
     negative: bool = false,
 
-    @(inline(always))
+    $[inline(always)]
     pub fn get(my this, bit: Flag): bool => (this.into_u8() >> bit as u8) & 1 != 0;
 
-    @(inline(always))
+    $[inline(always)]
     pub fn set(mut this, bit: Flag, val: bool) {
         if val {
             *this.as_u8_mut() |= (1 << bit as u8);

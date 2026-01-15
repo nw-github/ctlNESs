@@ -6,7 +6,7 @@ pub union SDL_Texture {}
 pub union SDL_Surface {}
 pub union SDL_sem {}
 
-@(layout(C))
+$[layout(C)]
 pub struct SDL_AudioSpec {
     pub freq: c_int,
     pub format: u16, // SDL_AudioFormat
@@ -15,11 +15,11 @@ pub struct SDL_AudioSpec {
     pub samples: u16,
     pub _padding: u16 = 0,
     pub size: u32,
-    pub callback: ?extern fn(user_data: ?^mut void, samples: ^mut u8, len: c_int),
+    pub callback: ?extern unsafe fn(user_data: ?^mut void, samples: ^mut u8, len: c_int),
     pub user_data: ?^mut void,
 }
 
-@(layout(C))
+$[layout(C)]
 pub struct SDL_Keysym {
     pub scancode: Scancode,
     pub sym: i32,
@@ -27,7 +27,7 @@ pub struct SDL_Keysym {
     pub unused: u32,
 }
 
-@(layout(C))
+$[layout(C)]
 pub struct SDL_KeyboardEvent {
     pub typ: u32,
     pub timestamp: u32,
@@ -39,7 +39,7 @@ pub struct SDL_KeyboardEvent {
     pub keysym: SDL_Keysym,
 }
 
-@(layout(C))
+$[layout(C)]
 pub struct SDL_WindowEvent {
     pub typ: u32,
     pub timestamp: u32,
@@ -72,7 +72,7 @@ pub union WindowEvent: u8 {
     DisplayChanged,
 }
 
-@(layout(C))
+$[layout(C)]
 pub unsafe union SDL_Event {
     typ: u32,
     key: SDL_KeyboardEvent,
@@ -80,7 +80,7 @@ pub unsafe union SDL_Event {
     _pad: [u8; 56],
 }
 
-@(layout(C))
+$[layout(C)]
 pub struct SDL_Rect {
     pub x: c_int,
     pub y: c_int,
@@ -188,7 +188,7 @@ pub extern fn SDL_CreateRGBSurfaceFrom(
     kw amask:  u32,
 ): ?*mut SDL_Surface;
 
-@(link_name(SDL_UpperBlitScaled))
+$[link_name(SDL_UpperBlitScaled)]
 pub extern fn SDL_BlitScaled(
     src:     *mut SDL_Surface,
     srcrect: ?*SDL_Rect,

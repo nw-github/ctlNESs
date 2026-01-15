@@ -10,7 +10,7 @@ pub struct Nes {
     mapper: *dyn mut bus::Mapper,
     signals: *mut cpu::Signals,
     cycle: u64 = 0,
-    audio: [f64] = @[0.0; (NTSC_CLOCK_RATE * 0.02) as uint],
+    audio: [f64] = @[0.0; (NTSC_CLOCK_RATE * 0.02) as! uint],
     video: [mut u32..] = @[0u32; ppu::HPIXELS * ppu::VPIXELS][..],
 
     pub fn new(cart: cart::Cart, ipt_mode: ipt::InputMode, prg_ram: ?[u8..]): Nes {
