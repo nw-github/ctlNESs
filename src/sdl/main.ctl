@@ -248,8 +248,14 @@ pub struct Audio {
             samples: (buf_size / 2) as! u16,
             silence: 0,
             size: 0,
-            callback: sdl_audio_callback,
             user_data: self as ^mut void, // this might be a problem for the GC
+            callback: ?|| (user_data, samples, len) {
+                let self = unsafe user_data! as *Audio;
+                let samples = unsafe SpanMut::new(samples.cast::<f32>(), len as! uint / 4);
+                for sample in samples.iter_mut() {
+                    *sample = self.buf.pop() ?? 0.0;
+                }
+            },
         );
         self.device = unsafe SDL_OpenAudioDevice(null, 0, &spec, null, 0);
         guard self.device != 0 else {
@@ -272,14 +278,6 @@ pub struct Audio {
     }
 
     pub fn buffer(this): *rb::RingBuffer<f32> => &this.buf;
-}
-
-extern fn sdl_audio_callback(user_data: ?^mut void, samples: ^mut u8, len: c_int) {
-    let self = unsafe user_data! as *Audio;
-    let samples = unsafe SpanMut::new(samples.cast::<f32>(), len as! uint / 4);
-    for sample in samples.iter_mut() {
-        *sample = self.buf.pop() ?? 0.0;
-    }
 }
 
 struct Renderer {
@@ -329,5 +327,5 @@ struct Renderer {
 }
 
 pub fn get_last_error(): str {
-    unsafe str::from_cstr_unchecked(SDL_GetError())
+    unsafe std::str::CStr::new(SDL_GetError()).as_str_unchecked()
 }
