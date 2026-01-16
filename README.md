@@ -9,22 +9,22 @@ ctlNESs is a NES emulator written in [CTL](https://github.com/nw-github/ctl). It
 
 ## Usage
 
-To compile the project, run the following command. You will need SDL2 installed.
+To compile the project, run the following command. You will need SDL2 and clang installed.
 
 ```
-ctl b -qio -lSDL2 -lrt -lm ./ctlness ctlness
+ctl b -qr
 ```
 
 Then, run the resulting `ctlness` binary with the path to the desired rom
 
 ```
-ctlness "roms/Super Mario Bros.nes"
+./build/ctlness "roms/Super Mario Bros.nes"
 ```
 
 Alternatively, you can do both in one command
 
 ```
-ctl r -qio -lSDL2 -lrt -lm ./ctlness -- "roms/Super Mario Bros.nes"
+ctl r -qr . -- "roms/Super Mario Bros.nes"
 ```
 
 The controls are hardcoded to the following values (for both controllers):
